@@ -325,6 +325,10 @@
                 isActive: true
             };
 
+            // Ensure clean data - no legacy balance issues
+            delete client.remainingMoney;  // Remove any old balance field
+            delete client.usedMoney;       // Remove any old used field
+
             clients.push(client);
             saveData('clients', clients);
             renderClients();
