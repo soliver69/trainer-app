@@ -162,9 +162,9 @@
             </div>
             <div class="modal-body">
                 <form id="addWorkoutForm">
-                    <div class="form-group">
+                    <div class="form-group" id="workoutClientGroup">
                         <label class="form-label">Client</label>
-                        <select class="form-input" id="workoutClient" required>
+                        <select class="form-input" id="workoutClient">
                             <option value="">Select Client</option>
                         </select>
                     </div>
@@ -298,11 +298,8 @@
                 document.getElementById('appointmentDate').value = formatDate(selectedDate);
                 showModal('addAppointmentModal');
             } else if (currentTab === 'workouts') {
-                // Show client dropdown and reset form
-                const dropdown = document.getElementById('workoutClient');
-                const label = dropdown.previousElementSibling;
-                dropdown.style.display = 'block';
-                label.style.display = 'block';
+                // Show client dropdown group
+                document.getElementById('workoutClientGroup').style.display = 'block';
                 showModal('addWorkoutModal');
             }
         }
@@ -553,10 +550,7 @@
             
             // Reset workout form client dropdown visibility when closing workout modal
             if (modalId === 'addWorkoutModal') {
-                const dropdown = document.getElementById('workoutClient');
-                const label = dropdown.previousElementSibling;
-                dropdown.style.display = 'block';
-                label.style.display = 'block';
+                document.getElementById('workoutClientGroup').style.display = 'block';
                 clearSignature();
             }
         }
@@ -657,11 +651,8 @@
                 return;
             }
 
-            // Hide client dropdown since we know the client
-            const dropdown = document.getElementById('workoutClient');
-            const label = dropdown.previousElementSibling;
-            dropdown.style.display = 'none';
-            label.style.display = 'none';
+            // Hide entire client selection group since we know the client
+            document.getElementById('workoutClientGroup').style.display = 'none';
             
             showModal('addWorkoutModal');
         }
