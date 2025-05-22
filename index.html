@@ -1,0 +1,518 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Personal Trainer Pro</title>
+    <meta name="description" content="Professional trainer app for client and session management">
+    <meta name="theme-color" content="#007AFF">
+    <link rel="manifest" href="manifest.json">
+    <link rel="apple-touch-icon" href="icon-192.png">
+    
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body { font-family: -apple-system, BlinkMacSystemFont, sans-serif; background: #f2f2f7; }
+        .app { display: flex; flex-direction: column; min-height: 100vh; }
+        .header { background: #007AFF; color: white; padding: 12px 16px; display: flex; justify-content: space-between; align-items: center; }
+        .btn { background: #007AFF; color: white; border: none; padding: 8px 16px; border-radius: 8px; cursor: pointer; }
+        .btn.secondary { background: #8E8E93; }
+        .content { flex: 1; padding: 16px; overflow-y: auto; }
+        .tabs { display: flex; background: white; border-top: 1px solid #ccc; }
+        .tab { flex: 1; padding: 12px; text-align: center; cursor: pointer; border: none; background: white; }
+        .tab.active { color: #007AFF; }
+        .card { background: white; border-radius: 10px; margin-bottom: 16px; box-shadow: 0 1px 3px rgba(0,0,0,0.1); }
+        .card-header { padding: 16px; border-bottom: 1px solid #f2f2f2; font-weight: 600; }
+        .card-content { padding: 16px; }
+        .client-item { padding: 12px 16px; border-bottom: 1px solid #f2f2f2; cursor: pointer; }
+        .client-item:hover { background: #f9f9f9; }
+        .client-name { font-weight: 600; margin-bottom: 4px; }
+        .client-phone { color: #8E8E93; font-size: 14px; margin-bottom: 8px; }
+        .badge { padding: 2px 8px; border-radius: 12px; font-size: 12px; color: white; }
+        .badge.success { background: #34C759; }
+        .badge.danger { background: #FF3B30; }
+        .modal { position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: rgba(0,0,0,0.5); display: none; align-items: center; justify-content: center; z-index: 1000; }
+        .modal.show { display: flex; }
+        .modal-content { background: white; border-radius: 12px; width: 90%; max-width: 400px; max-height: 90vh; overflow: auto; }
+        .modal-header { padding: 16px; border-bottom: 1px solid #f2f2f2; display: flex; justify-content: space-between; align-items: center; }
+        .modal-body { padding: 16px; }
+        .form-group { margin-bottom: 16px; }
+        .form-label { display: block; font-weight: 500; margin-bottom: 4px; }
+        .form-input { width: 100%; padding: 12px; border: 1px solid #ccc; border-radius: 8px; font-size: 16px; }
+        .hidden { display: none; }
+        .empty { text-align: center; padding: 40px; color: #8E8E93; }
+        .workout-item { background: white; border-radius: 8px; padding: 12px; margin-bottom: 8px; border-left: 4px solid #34C759; }
+        .calendar { background: white; border-radius: 10px; padding: 16px; margin-bottom: 16px; }
+        .calendar-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px; }
+        .calendar-grid { display: grid; grid-template-columns: repeat(7, 1fr); gap: 1px; background: #f2f2f2; border-radius: 8px; overflow: hidden; }
+        .calendar-day { background: white; padding: 12px 8px; text-align: center; cursor: pointer; font-size: 14px; }
+        .calendar-day.selected { background: #007AFF; color: white; }
+        .appointment-item { background: white; border-radius: 8px; padding: 12px; margin-bottom: 8px; border-left: 4px solid #007AFF; }
+    </style>
+</head>
+<body>
+    <div class="app">
+        <div class="header">
+            <h1 id="title">Personal Trainer</h1>
+            <button class="btn" id="addBtn">+ Add</button>
+        </div>
+        
+        <div class="content">
+            <!-- Clients Tab -->
+            <div id="clientsTab">
+                <div class="card">
+                    <div class="card-header">Active Clients</div>
+                    <div id="clientsList"></div>
+                </div>
+            </div>
+            
+            <!-- Schedule Tab -->
+            <div id="scheduleTab" class="hidden">
+                <div class="calendar">
+                    <div class="calendar-header">
+                        <button class="btn secondary" id="prevMonth">‹</button>
+                        <h3 id="currentMonth"></h3>
+                        <button class="btn secondary" id="nextMonth">›</button>
+                    </div>
+                    <div class="calendar-grid" id="calendarGrid"></div>
+                </div>
+                <div class="card">
+                    <div class="card-header" id="selectedDateHeader">Today's Schedule</div>
+                    <div id="appointmentsList"></div>
+                </div>
+            </div>
+            
+            <!-- Workouts Tab -->
+            <div id="workoutsTab" class="hidden">
+                <div class="card">
+                    <div class="card-header">Recent Workouts</div>
+                    <div id="workoutsList"></div>
+                </div>
+            </div>
+        </div>
+        
+        <div class="tabs">
+            <button class="tab active" data-tab="clients">👥 Clients</button>
+            <button class="tab" data-tab="schedule">📅 Schedule</button>
+            <button class="tab" data-tab="workouts">💪 Workouts</button>
+        </div>
+    </div>
+    
+    <!-- Add Client Modal -->
+    <div class="modal" id="addClientModal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3>Add New Client</h3>
+                <button class="btn secondary" onclick="closeModal('addClientModal')">Cancel</button>
+            </div>
+            <div class="modal-body">
+                <form id="addClientForm">
+                    <div class="form-group">
+                        <label class="form-label">Name</label>
+                        <input type="text" class="form-input" id="clientName" required>
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label">Phone</label>
+                        <input type="tel" class="form-input" id="clientPhone" required>
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label">Email</label>
+                        <input type="email" class="form-input" id="clientEmail">
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label">Deposit Amount ($)</label>
+                        <input type="number" class="form-input" id="clientDeposit" step="0.01" required>
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label">Price Per Session ($)</label>
+                        <input type="number" class="form-input" id="sessionPrice" step="0.01" required>
+                    </div>
+                    <button type="submit" class="btn" style="width: 100%;">Save Client</button>
+                </form>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Add Workout Modal -->
+    <div class="modal" id="addWorkoutModal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3>Record Workout</h3>
+                <button class="btn secondary" onclick="closeModal('addWorkoutModal')">Cancel</button>
+            </div>
+            <div class="modal-body">
+                <form id="addWorkoutForm">
+                    <div class="form-group">
+                        <label class="form-label">Client</label>
+                        <select class="form-input" id="workoutClient" required>
+                            <option value="">Select Client</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label">Exercises</label>
+                        <textarea class="form-input" id="workoutExercises" rows="4" required></textarea>
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label">Notes</label>
+                        <textarea class="form-input" id="workoutNotes" rows="3"></textarea>
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label">Duration (minutes)</label>
+                        <select class="form-input" id="workoutDuration">
+                            <option value="30">30 minutes</option>
+                            <option value="45">45 minutes</option>
+                            <option value="60" selected>60 minutes</option>
+                            <option value="90">90 minutes</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label">Client Signature</label>
+                        <input type="text" class="form-input" id="clientSignature" required>
+                    </div>
+                    <button type="submit" class="btn" style="width: 100%;">Save Workout</button>
+                </form>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Add Appointment Modal -->
+    <div class="modal" id="addAppointmentModal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3>Schedule Appointment</h3>
+                <button class="btn secondary" onclick="closeModal('addAppointmentModal')">Cancel</button>
+            </div>
+            <div class="modal-body">
+                <form id="addAppointmentForm">
+                    <div class="form-group">
+                        <label class="form-label">Client</label>
+                        <select class="form-input" id="appointmentClient" required>
+                            <option value="">Select Client</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label">Date</label>
+                        <input type="date" class="form-input" id="appointmentDate" required>
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label">Time</label>
+                        <input type="time" class="form-input" id="appointmentTime" required>
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label">Duration</label>
+                        <select class="form-input" id="appointmentDuration">
+                            <option value="30">30 minutes</option>
+                            <option value="60" selected>60 minutes</option>
+                            <option value="90">90 minutes</option>
+                        </select>
+                    </div>
+                    <button type="submit" class="btn" style="width: 100%;">Schedule</button>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // App Data
+        let clients = JSON.parse(localStorage.getItem('clients') || '[]');
+        let workouts = JSON.parse(localStorage.getItem('workouts') || '[]');
+        let appointments = JSON.parse(localStorage.getItem('appointments') || '[]');
+        let currentTab = 'clients';
+        let selectedDate = new Date();
+        let currentMonth = new Date();
+
+        // Initialize App
+        document.addEventListener('DOMContentLoaded', function() {
+            setupEventListeners();
+            renderClients();
+            renderCalendar();
+            renderWorkouts();
+            setupPWA();
+        });
+
+        function setupEventListeners() {
+            // Tab switching
+            document.querySelectorAll('.tab').forEach(tab => {
+                tab.addEventListener('click', () => switchTab(tab.dataset.tab));
+            });
+
+            // Add button
+            document.getElementById('addBtn').addEventListener('click', handleAddButton);
+
+            // Forms
+            document.getElementById('addClientForm').addEventListener('submit', addClient);
+            document.getElementById('addWorkoutForm').addEventListener('submit', addWorkout);
+            document.getElementById('addAppointmentForm').addEventListener('submit', addAppointment);
+
+            // Calendar navigation
+            document.getElementById('prevMonth').addEventListener('click', () => changeMonth(-1));
+            document.getElementById('nextMonth').addEventListener('click', () => changeMonth(1));
+        }
+
+        function switchTab(tabName) {
+            // Update active tab
+            document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+            document.querySelector(`[data-tab="${tabName}"]`).classList.add('active');
+
+            // Show/hide content
+            document.querySelectorAll('[id$="Tab"]').forEach(t => t.classList.add('hidden'));
+            document.getElementById(tabName + 'Tab').classList.remove('hidden');
+
+            currentTab = tabName;
+            
+            const titles = { clients: 'Clients', schedule: 'Schedule', workouts: 'Workouts' };
+            document.getElementById('title').textContent = titles[tabName];
+        }
+
+        function handleAddButton() {
+            if (currentTab === 'clients') {
+                showModal('addClientModal');
+            } else if (currentTab === 'schedule') {
+                populateClientDropdown('appointmentClient');
+                document.getElementById('appointmentDate').value = formatDate(selectedDate);
+                showModal('addAppointmentModal');
+            } else if (currentTab === 'workouts') {
+                populateClientDropdown('workoutClient');
+                showModal('addWorkoutModal');
+            }
+        }
+
+        function addClient(e) {
+            e.preventDefault();
+            const deposit = parseFloat(document.getElementById('clientDeposit').value);
+            const price = parseFloat(document.getElementById('sessionPrice').value);
+            
+            const client = {
+                id: Date.now().toString(),
+                name: document.getElementById('clientName').value,
+                phone: document.getElementById('clientPhone').value,
+                email: document.getElementById('clientEmail').value,
+                deposit: deposit,
+                pricePerSession: price,
+                totalSessions: Math.floor(deposit / price),
+                sessionsRemaining: Math.floor(deposit / price),
+                dateCreated: new Date().toISOString(),
+                isActive: true
+            };
+
+            clients.push(client);
+            saveData('clients', clients);
+            renderClients();
+            closeModal('addClientModal');
+            document.getElementById('addClientForm').reset();
+        }
+
+        function addWorkout(e) {
+            e.preventDefault();
+            const clientId = document.getElementById('workoutClient').value;
+            const client = clients.find(c => c.id === clientId);
+            
+            if (!client || client.sessionsRemaining <= 0) {
+                alert('Client has no remaining sessions');
+                return;
+            }
+
+            const workout = {
+                id: Date.now().toString(),
+                clientId: clientId,
+                date: new Date().toISOString(),
+                exercises: document.getElementById('workoutExercises').value,
+                notes: document.getElementById('workoutNotes').value,
+                duration: parseInt(document.getElementById('workoutDuration').value),
+                clientSignature: document.getElementById('clientSignature').value
+            };
+
+            workouts.push(workout);
+            client.sessionsRemaining--;
+            
+            saveData('workouts', workouts);
+            saveData('clients', clients);
+            
+            renderClients();
+            renderWorkouts();
+            closeModal('addWorkoutModal');
+            document.getElementById('addWorkoutForm').reset();
+        }
+
+        function addAppointment(e) {
+            e.preventDefault();
+            const appointment = {
+                id: Date.now().toString(),
+                clientId: document.getElementById('appointmentClient').value,
+                date: document.getElementById('appointmentDate').value,
+                time: document.getElementById('appointmentTime').value,
+                duration: parseInt(document.getElementById('appointmentDuration').value)
+            };
+
+            appointments.push(appointment);
+            saveData('appointments', appointments);
+            renderAppointments();
+            closeModal('addAppointmentModal');
+            document.getElementById('addAppointmentForm').reset();
+        }
+
+        function renderClients() {
+            const container = document.getElementById('clientsList');
+            const activeClients = clients.filter(c => c.isActive);
+
+            if (activeClients.length === 0) {
+                container.innerHTML = '<div class="empty">No clients yet. Add your first client!</div>';
+                return;
+            }
+
+            container.innerHTML = activeClients.map(client => `
+                <div class="client-item">
+                    <div class="client-name">${client.name}</div>
+                    <div class="client-phone">${client.phone}</div>
+                    <div style="display: flex; gap: 8px; align-items: center;">
+                        <span class="badge ${client.sessionsRemaining > 0 ? 'success' : 'danger'}">
+                            ${client.sessionsRemaining} sessions
+                        </span>
+                        <span style="color: #8E8E93; font-size: 12px;">
+                            $${client.deposit.toFixed(2)}
+                        </span>
+                    </div>
+                </div>
+            `).join('');
+        }
+
+        function renderWorkouts() {
+            const container = document.getElementById('workoutsList');
+            const recentWorkouts = workouts.sort((a, b) => new Date(b.date) - new Date(a.date)).slice(0, 10);
+
+            if (recentWorkouts.length === 0) {
+                container.innerHTML = '<div class="empty">No workouts recorded yet.</div>';
+                return;
+            }
+
+            container.innerHTML = recentWorkouts.map(workout => {
+                const client = clients.find(c => c.id === workout.clientId);
+                return `
+                    <div class="workout-item">
+                        <div style="display: flex; justify-content: space-between; margin-bottom: 8px;">
+                            <strong>${client ? client.name : 'Unknown Client'}</strong>
+                            <span style="color: #8E8E93;">${new Date(workout.date).toLocaleDateString()}</span>
+                        </div>
+                        <div style="margin-bottom: 4px;">${workout.exercises}</div>
+                        ${workout.notes ? `<div style="color: #8E8E93; font-size: 14px;">${workout.notes}</div>` : ''}
+                        <div style="color: #007AFF; font-size: 12px; margin-top: 8px;">
+                            ${workout.duration} min • Signed: ${workout.clientSignature}
+                        </div>
+                    </div>
+                `;
+            }).join('');
+        }
+
+        function renderCalendar() {
+            const year = currentMonth.getFullYear();
+            const month = currentMonth.getMonth();
+            const firstDay = new Date(year, month, 1);
+            const lastDay = new Date(year, month + 1, 0);
+            const startDate = new Date(firstDay);
+            startDate.setDate(startDate.getDate() - firstDay.getDay());
+
+            document.getElementById('currentMonth').textContent = 
+                firstDay.toLocaleDateString('en-US', { month: 'long', year: 'numeric' });
+
+            const grid = document.getElementById('calendarGrid');
+            const days = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
+            
+            let html = days.map(day => `<div class="calendar-day" style="background: #f2f2f2; font-weight: 600;">${day}</div>`).join('');
+
+            for (let i = 0; i < 42; i++) {
+                const date = new Date(startDate);
+                date.setDate(startDate.getDate() + i);
+                
+                const isCurrentMonth = date.getMonth() === month;
+                const isSelected = date.toDateString() === selectedDate.toDateString();
+                
+                html += `
+                    <div class="calendar-day ${isSelected ? 'selected' : ''}" 
+                         style="${!isCurrentMonth ? 'color: #C6C6C8;' : ''}"
+                         onclick="selectDate('${date.toISOString()}')">
+                        ${date.getDate()}
+                    </div>
+                `;
+            }
+            
+            grid.innerHTML = html;
+            renderAppointments();
+        }
+
+        function renderAppointments() {
+            const container = document.getElementById('appointmentsList');
+            const dateStr = formatDate(selectedDate);
+            const dayAppointments = appointments.filter(apt => apt.date === dateStr);
+
+            document.getElementById('selectedDateHeader').textContent = 
+                selectedDate.toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric' });
+
+            if (dayAppointments.length === 0) {
+                container.innerHTML = '<div class="empty">No appointments scheduled</div>';
+                return;
+            }
+
+            container.innerHTML = dayAppointments.map(apt => {
+                const client = clients.find(c => c.id === apt.clientId);
+                return `
+                    <div class="appointment-item">
+                        <div style="display: flex; justify-content: space-between; margin-bottom: 4px;">
+                            <strong>${client ? client.name : 'Unknown Client'}</strong>
+                            <span>${apt.time}</span>
+                        </div>
+                        <div style="color: #8E8E93; font-size: 14px;">${apt.duration} minutes</div>
+                    </div>
+                `;
+            }).join('');
+        }
+
+        function changeMonth(delta) {
+            currentMonth.setMonth(currentMonth.getMonth() + delta);
+            renderCalendar();
+        }
+
+        function selectDate(dateStr) {
+            selectedDate = new Date(dateStr);
+            renderCalendar();
+        }
+
+        function populateClientDropdown(selectId) {
+            const select = document.getElementById(selectId);
+            const activeClients = clients.filter(c => c.isActive);
+            
+            select.innerHTML = '<option value="">Select Client</option>' +
+                activeClients.map(c => `<option value="${c.id}">${c.name}</option>`).join('');
+        }
+
+        function showModal(modalId) {
+            document.getElementById(modalId).classList.add('show');
+        }
+
+        function closeModal(modalId) {
+            document.getElementById(modalId).classList.remove('show');
+        }
+
+        function saveData(key, data) {
+            localStorage.setItem(key, JSON.stringify(data));
+        }
+
+        function formatDate(date) {
+            return date.toISOString().split('T')[0];
+        }
+
+        function setupPWA() {
+            // Service worker registration
+            if ('serviceWorker' in navigator) {
+                navigator.serviceWorker.register('data:text/javascript,console.log("SW registered")');
+            }
+
+            // Install prompt
+            let deferredPrompt;
+            window.addEventListener('beforeinstallprompt', (e) => {
+                e.preventDefault();
+                deferredPrompt = e;
+                // Show install button/prompt
+            });
+        }
+    </script>
+</body>
+</html>
