@@ -88,6 +88,27 @@
                     <div id="workoutsList"></div>
                 </div>
             </div>
+            
+            <!-- Client Detail View -->
+            <div id="clientDetailTab" class="hidden">
+                <div class="card">
+                    <div class="card-header">
+                        <div style="display: flex; justify-content: space-between; align-items: center;">
+                            <div>
+                                <h3 id="clientDetailName">Client Name</h3>
+                                <button class="btn secondary" onclick="showMainView()" style="margin-top: 8px;">← Back to Clients</button>
+                            </div>
+                            <button class="btn" onclick="showAddWorkoutForClient()">Add Workout</button>
+                        </div>
+                    </div>
+                    <div class="card-content" id="clientDetailInfo"></div>
+                </div>
+                
+                <div class="card">
+                    <div class="card-header">Workout History</div>
+                    <div id="clientWorkoutsList"></div>
+                </div>
+            </div>
         </div>
         
         <div class="tabs">
@@ -148,12 +169,8 @@
                         </select>
                     </div>
                     <div class="form-group">
-                        <label class="form-label">Exercises</label>
-                        <textarea class="form-input" id="workoutExercises" rows="4" required></textarea>
-                    </div>
-                    <div class="form-group">
-                        <label class="form-label">Notes</label>
-                        <textarea class="form-input" id="workoutNotes" rows="3"></textarea>
+                        <label class="form-label">Exercises / Notes</label>
+                        <textarea class="form-input" id="workoutExercises" rows="5" required placeholder="Describe exercises performed and any notes..."></textarea>
                     </div>
                     <div class="form-group">
                         <label class="form-label">Duration (minutes)</label>
@@ -166,7 +183,10 @@
                     </div>
                     <div class="form-group">
                         <label class="form-label">Client Signature</label>
-                        <input type="text" class="form-input" id="clientSignature" required>
+                        <canvas id="signatureCanvas" width="350" height="100" style="border: 2px solid #ccc; border-radius: 8px; background: white; display: block; width: 100%; touch-action: none;"></canvas>
+                        <div style="margin-top: 8px;">
+                            <button type="button" class="btn secondary" onclick="clearSignature()">Clear Signature</button>
+                        </div>
                     </div>
                     <button type="submit" class="btn" style="width: 100%;">Save Workout</button>
                 </form>
@@ -219,6 +239,10 @@
         let currentTab = 'clients';
         let selectedDate = new Date();
         let currentMonth = new Date();
+        let currentClientId = null;
+        let signatureCanvas = null;
+        let signatureContext = null;
+        let isDrawing = false;
 
         // Initialize App
         document.addEventListener('DOMContentLoaded', function() {
@@ -226,6 +250,7 @@
             renderClients();
             renderCalendar();
             renderWorkouts();
+            setupSignatureCanvas();
             setupPWA();
         });
 
@@ -303,7 +328,7 @@
 
         function addWorkout(e) {
             e.preventDefault();
-            const clientId = document.getElementById('workoutClient').value;
+            const clientId = document.getElementById('workoutClient').value || currentClientId;
             const client = clients.find(c => c.id === clientId);
             
             if (!client || client.sessionsRemaining <= 0) {
@@ -311,14 +336,20 @@
                 return;
             }
 
+            // Get signature data
+            const signatureData = signatureCanvas.toDataURL();
+            if (isCanvasEmpty()) {
+                alert('Please provide a client signature');
+                return;
+            }
+
             const workout = {
                 id: Date.now().toString(),
                 clientId: clientId,
                 date: new Date().toISOString(),
-                exercises: document.getElementById('workoutExercises').value,
-                notes: document.getElementById('workoutNotes').value,
+                exercisesNotes: document.getElementById('workoutExercises').value,
                 duration: parseInt(document.getElementById('workoutDuration').value),
-                clientSignature: document.getElementById('clientSignature').value
+                clientSignature: signatureData
             };
 
             workouts.push(workout);
@@ -329,8 +360,12 @@
             
             renderClients();
             renderWorkouts();
+            if (currentClientId) {
+                renderClientDetail(currentClientId);
+            }
             closeModal('addWorkoutModal');
             document.getElementById('addWorkoutForm').reset();
+            clearSignature();
         }
 
         function addAppointment(e) {
@@ -359,20 +394,23 @@
                 return;
             }
 
-            container.innerHTML = activeClients.map(client => `
-                <div class="client-item">
-                    <div class="client-name">${client.name}</div>
-                    <div class="client-phone">${client.phone}</div>
-                    <div style="display: flex; gap: 8px; align-items: center;">
-                        <span class="badge ${client.sessionsRemaining > 0 ? 'success' : 'danger'}">
-                            ${client.sessionsRemaining} sessions
-                        </span>
-                        <span style="color: #8E8E93; font-size: 12px;">
-                            $${client.deposit.toFixed(2)}
-                        </span>
+            container.innerHTML = activeClients.map(client => {
+                const remainingMoney = client.sessionsRemaining * client.pricePerSession;
+                return `
+                    <div class="client-item" onclick="showClientDetail('${client.id}')">
+                        <div class="client-name">${client.name}</div>
+                        <div class="client-phone">${client.phone}</div>
+                        <div style="display: flex; gap: 8px; align-items: center;">
+                            <span class="badge ${client.sessionsRemaining > 0 ? 'success' : 'danger'}">
+                                ${client.sessionsRemaining} sessions
+                            </span>
+                            <span style="color: #8E8E93; font-size: 12px;">
+                                ${remainingMoney.toFixed(2)} left
+                            </span>
+                        </div>
                     </div>
-                </div>
-            `).join('');
+                `;
+            }).join('');
         }
 
         function renderWorkouts() {
@@ -392,10 +430,9 @@
                             <strong>${client ? client.name : 'Unknown Client'}</strong>
                             <span style="color: #8E8E93;">${new Date(workout.date).toLocaleDateString()}</span>
                         </div>
-                        <div style="margin-bottom: 4px;">${workout.exercises}</div>
-                        ${workout.notes ? `<div style="color: #8E8E93; font-size: 14px;">${workout.notes}</div>` : ''}
+                        <div style="margin-bottom: 4px;">${workout.exercisesNotes || workout.exercises}</div>
                         <div style="color: #007AFF; font-size: 12px; margin-top: 8px;">
-                            ${workout.duration} min • Signed: ${workout.clientSignature}
+                            ${workout.duration} min • Client Signed ✓
                         </div>
                     </div>
                 `;
@@ -512,6 +549,200 @@
                 deferredPrompt = e;
                 // Show install button/prompt
             });
+        }
+
+        // Client Detail Functions
+        function showClientDetail(clientId) {
+            currentClientId = clientId;
+            const client = clients.find(c => c.id === clientId);
+            if (!client) return;
+
+            // Hide all tabs and show client detail
+            document.querySelectorAll('[id$="Tab"]').forEach(t => t.classList.add('hidden'));
+            document.getElementById('clientDetailTab').classList.remove('hidden');
+            
+            document.getElementById('title').textContent = client.name;
+            renderClientDetail(clientId);
+        }
+
+        function renderClientDetail(clientId) {
+            const client = clients.find(c => c.id === clientId);
+            if (!client) return;
+
+            const remainingMoney = client.sessionsRemaining * client.pricePerSession;
+            const usedMoney = client.deposit - remainingMoney;
+
+            document.getElementById('clientDetailName').textContent = client.name;
+            document.getElementById('clientDetailInfo').innerHTML = `
+                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin-bottom: 16px;">
+                    <div>
+                        <strong>Phone:</strong><br>${client.phone}<br><br>
+                        <strong>Email:</strong><br>${client.email || 'Not provided'}
+                    </div>
+                    <div>
+                        <strong>Sessions Remaining:</strong><br>${client.sessionsRemaining}<br><br>
+                        <strong>Money Remaining:</strong><br>${remainingMoney.toFixed(2)}
+                    </div>
+                </div>
+                <div style="background: #f8f8f8; padding: 12px; border-radius: 8px;">
+                    <strong>Payment Summary:</strong><br>
+                    Total Deposit: ${client.deposit.toFixed(2)}<br>
+                    Amount Used: ${usedMoney.toFixed(2)}<br>
+                    Price per Session: ${client.pricePerSession.toFixed(2)}
+                </div>
+            `;
+
+            // Render client's workouts
+            const clientWorkouts = workouts.filter(w => w.clientId === clientId)
+                .sort((a, b) => new Date(b.date) - new Date(a.date));
+
+            const workoutsContainer = document.getElementById('clientWorkoutsList');
+            if (clientWorkouts.length === 0) {
+                workoutsContainer.innerHTML = '<div class="empty">No workouts recorded yet.</div>';
+            } else {
+                workoutsContainer.innerHTML = clientWorkouts.map(workout => `
+                    <div class="workout-item" style="position: relative;">
+                        <div style="display: flex; justify-content: space-between; margin-bottom: 8px;">
+                            <strong>${new Date(workout.date).toLocaleDateString()}</strong>
+                            <span style="color: #8E8E93;">${workout.duration} min</span>
+                        </div>
+                        <div style="margin-bottom: 8px;">${workout.exercisesNotes || workout.exercises}</div>
+                        <div style="color: #007AFF; font-size: 12px;">
+                            Client Signed ✓ <button onclick="viewSignature('${workout.id}')" style="background: none; border: none; color: #007AFF; text-decoration: underline; cursor: pointer;">View</button>
+                        </div>
+                    </div>
+                `).join('');
+            }
+        }
+
+        function showAddWorkoutForClient() {
+            if (!currentClientId) return;
+            
+            const client = clients.find(c => c.id === currentClientId);
+            if (!client || client.sessionsRemaining <= 0) {
+                alert('This client has no remaining sessions.');
+                return;
+            }
+
+            // Hide client dropdown since we know the client
+            document.getElementById('workoutClient').style.display = 'none';
+            document.querySelector('label[for="workoutClient"]').style.display = 'none';
+            
+            showModal('addWorkoutModal');
+        }
+
+        function showMainView() {
+            currentClientId = null;
+            document.querySelectorAll('[id$="Tab"]').forEach(t => t.classList.add('hidden'));
+            document.getElementById(currentTab + 'Tab').classList.remove('hidden');
+            
+            const titles = { clients: 'Clients', schedule: 'Schedule', workouts: 'Workouts' };
+            document.getElementById('title').textContent = titles[currentTab];
+        }
+
+        function viewSignature(workoutId) {
+            const workout = workouts.find(w => w.id === workoutId);
+            if (workout && workout.clientSignature) {
+                const img = new Image();
+                img.src = workout.clientSignature;
+                img.style.maxWidth = '100%';
+                img.style.border = '1px solid #ccc';
+                
+                const popup = window.open('', '_blank', 'width=400,height=300');
+                popup.document.write(`
+                    <html>
+                        <head><title>Client Signature</title></head>
+                        <body style="padding: 20px; text-align: center;">
+                            <h3>Client Signature</h3>
+                            <div style="border: 1px solid #ccc; padding: 10px; display: inline-block;">
+                                ${img.outerHTML}
+                            </div>
+                        </body>
+                    </html>
+                `);
+            }
+        }
+
+        // Signature Canvas Functions
+        function setupSignatureCanvas() {
+            // This will be called when the modal opens
+        }
+
+        function initSignatureCanvas() {
+            signatureCanvas = document.getElementById('signatureCanvas');
+            if (!signatureCanvas) return;
+            
+            signatureContext = signatureCanvas.getContext('2d');
+            
+            // Set canvas size
+            const rect = signatureCanvas.getBoundingClientRect();
+            signatureCanvas.width = rect.width * 2;
+            signatureCanvas.height = rect.height * 2;
+            signatureContext.scale(2, 2);
+            
+            // Setup drawing
+            signatureContext.strokeStyle = '#000';
+            signatureContext.lineWidth = 2;
+            signatureContext.lineCap = 'round';
+
+            // Touch events
+            signatureCanvas.addEventListener('touchstart', startDrawing);
+            signatureCanvas.addEventListener('touchmove', draw);
+            signatureCanvas.addEventListener('touchend', stopDrawing);
+            
+            // Mouse events
+            signatureCanvas.addEventListener('mousedown', startDrawing);
+            signatureCanvas.addEventListener('mousemove', draw);
+            signatureCanvas.addEventListener('mouseup', stopDrawing);
+            signatureCanvas.addEventListener('mouseout', stopDrawing);
+        }
+
+        function startDrawing(e) {
+            e.preventDefault();
+            isDrawing = true;
+            const rect = signatureCanvas.getBoundingClientRect();
+            const x = (e.touches ? e.touches[0].clientX : e.clientX) - rect.left;
+            const y = (e.touches ? e.touches[0].clientY : e.clientY) - rect.top;
+            
+            signatureContext.beginPath();
+            signatureContext.moveTo(x, y);
+        }
+
+        function draw(e) {
+            if (!isDrawing) return;
+            e.preventDefault();
+            
+            const rect = signatureCanvas.getBoundingClientRect();
+            const x = (e.touches ? e.touches[0].clientX : e.clientX) - rect.left;
+            const y = (e.touches ? e.touches[0].clientY : e.clientY) - rect.top;
+            
+            signatureContext.lineTo(x, y);
+            signatureContext.stroke();
+        }
+
+        function stopDrawing() {
+            isDrawing = false;
+        }
+
+        function clearSignature() {
+            if (signatureContext) {
+                signatureContext.clearRect(0, 0, signatureCanvas.width, signatureCanvas.height);
+            }
+        }
+
+        function isCanvasEmpty() {
+            const blank = document.createElement('canvas');
+            blank.width = signatureCanvas.width;
+            blank.height = signatureCanvas.height;
+            return signatureCanvas.toDataURL() === blank.toDataURL();
+        }
+
+        // Override showModal to initialize signature canvas
+        function showModal(modalId) {
+            document.getElementById(modalId).classList.add('show');
+            if (modalId === 'addWorkoutModal') {
+                setTimeout(initSignatureCanvas, 100);
+            }
         }
     </script>
 </body>
