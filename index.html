@@ -442,19 +442,14 @@
             container.innerHTML = recentWorkouts.map(workout => {
                 const client = clients.find(c => c.id === workout.clientId);
                 return `
-                    <div class="workout-item" style="position: relative;">
-                        <div style="display: flex; justify-content: space-between; align-items: flex-start;">
-                            <div style="flex: 1;">
-                                <div style="display: flex; justify-content: space-between; margin-bottom: 8px;">
-                                    <strong>${client ? client.name : 'Unknown Client'}</strong>
-                                    <span style="color: #8E8E93;">${new Date(workout.date).toLocaleDateString()}</span>
-                                </div>
-                                <div style="margin-bottom: 4px;">${workout.exercisesNotes || workout.exercises}</div>
-                                <div style="color: #007AFF; font-size: 12px; margin-top: 8px;">
-                                    ${workout.duration} min • Client Signed ✓
-                                </div>
-                            </div>
-                            <button onclick="confirmDeleteWorkout('${workout.id}')" style="background: #FF3B30; color: white; border: none; padding: 4px 8px; border-radius: 4px; font-size: 12px; cursor: pointer; margin-left: 8px;">Delete</button>
+                    <div class="workout-item">
+                        <div style="display: flex; justify-content: space-between; margin-bottom: 8px;">
+                            <strong>${client ? client.name : 'Unknown Client'}</strong>
+                            <span style="color: #8E8E93;">${new Date(workout.date).toLocaleDateString()}</span>
+                        </div>
+                        <div style="margin-bottom: 4px;">${workout.exercisesNotes || workout.exercises}</div>
+                        <div style="color: #007AFF; font-size: 12px; margin-top: 8px;">
+                            ${workout.duration} min • Client Signed ✓
                         </div>
                     </div>
                 `;
