@@ -252,6 +252,9 @@
             renderWorkouts();
             setupSignatureCanvas();
             setupPWA();
+            
+            // Debug: Check if we have clients
+            console.log('Clients loaded:', clients.length);
         });
 
         function setupEventListeners() {
@@ -292,14 +295,14 @@
             if (currentTab === 'clients') {
                 showModal('addClientModal');
             } else if (currentTab === 'schedule') {
-                populateClientDropdown('appointmentClient');
                 document.getElementById('appointmentDate').value = formatDate(selectedDate);
                 showModal('addAppointmentModal');
             } else if (currentTab === 'workouts') {
-                // Show client dropdown and populate it
-                document.getElementById('workoutClient').style.display = 'block';
-                document.querySelector('label[for="workoutClient"]').style.display = 'block';
-                populateClientDropdown('workoutClient');
+                // Show client dropdown and reset form
+                const dropdown = document.getElementById('workoutClient');
+                const label = dropdown.previousElementSibling;
+                dropdown.style.display = 'block';
+                label.style.display = 'block';
                 showModal('addWorkoutModal');
             }
         }
@@ -523,11 +526,22 @@
         }
 
         function populateClientDropdown(selectId) {
+            console.log('Populating dropdown:', selectId, 'with clients:', clients.length);
             const select = document.getElementById(selectId);
-            const activeClients = clients.filter(c => c.isActive && c.sessionsRemaining > 0);
+            if (!select) {
+                console.error('Select element not found:', selectId);
+                return;
+            }
             
-            select.innerHTML = '<option value="">Select Client</option>' +
-                activeClients.map(c => `<option value="${c.id}">${c.name} (${c.sessionsRemaining} sessions left)</option>`).join('');
+            const activeClients = clients.filter(c => c.isActive && c.sessionsRemaining > 0);
+            console.log('Active clients with sessions:', activeClients.length);
+            
+            if (activeClients.length === 0) {
+                select.innerHTML = '<option value="">No clients with remaining sessions</option>';
+            } else {
+                select.innerHTML = '<option value="">Select Client</option>' +
+                    activeClients.map(c => `<option value="${c.id}">${c.name} (${c.sessionsRemaining} sessions left)</option>`).join('');
+            }
         }
 
         function showModal(modalId) {
@@ -758,11 +772,16 @@
             return signatureCanvas.toDataURL() === blank.toDataURL();
         }
 
-        // Override showModal to initialize signature canvas
+        // Override showModal to initialize signature canvas and populate dropdowns
         function showModal(modalId) {
             document.getElementById(modalId).classList.add('show');
+            
             if (modalId === 'addWorkoutModal') {
+                // Always populate the dropdown when showing workout modal
+                populateClientDropdown('workoutClient');
                 setTimeout(initSignatureCanvas, 100);
+            } else if (modalId === 'addAppointmentModal') {
+                populateClientDropdown('appointmentClient');
             }
         }
     </script>
