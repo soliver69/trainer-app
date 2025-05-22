@@ -99,6 +99,7 @@
                                 <button class="btn secondary" onclick="showMainView()" style="margin-top: 8px;">← Back to Clients</button>
                             </div>
                             <div style="display: flex; gap: 8px;">
+                                <button class="btn" onclick="showAddMoneyModal()">Add Money</button>
                                 <button class="btn" onclick="showAddWorkoutForClient()">Add Workout</button>
                                 <button class="btn danger" onclick="confirmDeleteClient()">Delete Client</button>
                             </div>
@@ -234,6 +235,37 @@
         </div>
     </div>
 
+    <!-- Add Money Modal -->
+    <div class="modal" id="addMoneyModal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3>Add Money to Account</h3>
+                <button class="btn secondary" onclick="closeModal('addMoneyModal')">Cancel</button>
+            </div>
+            <div class="modal-body">
+                <form id="addMoneyForm">
+                    <div class="form-group">
+                        <label class="form-label">Client</label>
+                        <input type="text" class="form-input" id="addMoneyClientName" readonly style="background: #f8f8f8;">
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label">Amount to Add ($)</label>
+                        <input type="number" class="form-input" id="addMoneyAmount" step="0.01" min="0.01" required placeholder="Enter amount">
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label">Current Balance</label>
+                        <input type="text" class="form-input" id="currentBalance" readonly style="background: #f8f8f8;">
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label">New Balance After Adding</label>
+                        <input type="text" class="form-input" id="newBalance" readonly style="background: #e8f5e8;">
+                    </div>
+                    <button type="submit" class="btn" style="width: 100%;">Add Money</button>
+                </form>
+            </div>
+        </div>
+    </div>
+
     <script>
         // App Data
         let clients = JSON.parse(localStorage.getItem('clients') || '[]');
@@ -273,6 +305,7 @@
             document.getElementById('addClientForm').addEventListener('submit', addClient);
             document.getElementById('addWorkoutForm').addEventListener('submit', addWorkout);
             document.getElementById('addAppointmentForm').addEventListener('submit', addAppointment);
+            document.getElementById('addMoneyForm').addEventListener('submit', addMoney);
 
             // Calendar navigation
             document.getElementById('prevMonth').addEventListener('click', () => changeMonth(-1));
@@ -827,6 +860,84 @@
             showMainView();
             
             alert('Client and all associated data have been deleted.');
+        }
+
+        // Add Money Functions
+        function showAddMoneyModal() {
+            if (!currentClientId) return;
+            
+            const client = clients.find(c => c.id === currentClientId);
+            if (!client) return;
+            
+            const remainingMoney = client.sessionsRemaining * client.pricePerSession;
+            
+            document.getElementById('addMoneyClientName').value = client.name;
+            document.getElementById('currentBalance').value = `${remainingMoney.toFixed(2)}`;
+            document.getElementById('addMoneyAmount').value = '';
+            document.getElementById('newBalance').value = '';
+            
+            // Add event listener for real-time balance calculation
+            const amountInput = document.getElementById('addMoneyAmount');
+            amountInput.addEventListener('input', updateNewBalance);
+            
+            showModal('addMoneyModal');
+        }
+
+        function updateNewBalance() {
+            const client = clients.find(c => c.id === currentClientId);
+            if (!client) return;
+            
+            const currentRemaining = client.sessionsRemaining * client.pricePerSession;
+            const addAmount = parseFloat(document.getElementById('addMoneyAmount').value) || 0;
+            const newTotal = currentRemaining + addAmount;
+            
+            document.getElementById('newBalance').value = `${newTotal.toFixed(2)}`;
+        }
+
+        function addMoney(e) {
+            e.preventDefault();
+            
+            if (!currentClientId) return;
+            
+            const client = clients.find(c => c.id === currentClientId);
+            if (!client) return;
+            
+            const addAmount = parseFloat(document.getElementById('addMoneyAmount').value);
+            if (!addAmount || addAmount <= 0) {
+                alert('Please enter a valid amount greater than $0');
+                return;
+            }
+            
+            // Calculate how many additional sessions this money provides
+            const additionalSessions = Math.floor(addAmount / client.pricePerSession);
+            const remainderMoney = addAmount % client.pricePerSession;
+            
+            // Update client data
+            client.deposit += addAmount;
+            client.totalSessions += additionalSessions;
+            client.sessionsRemaining += additionalSessions;
+            
+            // Save data
+            saveData('clients', clients);
+            
+            // Update displays
+            renderClients();
+            renderClientDetail(currentClientId);
+            
+            // Close modal and reset form
+            closeModal('addMoneyModal');
+            document.getElementById('addMoneyForm').reset();
+            
+            // Show confirmation
+            let message = `${addAmount.toFixed(2)} added to ${client.name}'s account!\n\n`;
+            message += `• ${additionalSessions} additional sessions added\n`;
+            if (remainderMoney > 0) {
+                message += `• ${remainderMoney.toFixed(2)} credit remaining (not enough for a full session)\n`;
+            }
+            message += `• New total sessions: ${client.totalSessions}\n`;
+            message += `• Sessions remaining: ${client.sessionsRemaining}`;
+            
+            alert(message);
         }
 
         function confirmDeleteWorkout(workoutId) {
