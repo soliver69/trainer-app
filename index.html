@@ -296,6 +296,9 @@
                 document.getElementById('appointmentDate').value = formatDate(selectedDate);
                 showModal('addAppointmentModal');
             } else if (currentTab === 'workouts') {
+                // Show client dropdown and populate it
+                document.getElementById('workoutClient').style.display = 'block';
+                document.querySelector('label[for="workoutClient"]').style.display = 'block';
                 populateClientDropdown('workoutClient');
                 showModal('addWorkoutModal');
             }
@@ -329,19 +332,26 @@
         function addWorkout(e) {
             e.preventDefault();
             const clientId = document.getElementById('workoutClient').value || currentClientId;
-            const client = clients.find(c => c.id === clientId);
             
+            if (!clientId) {
+                alert('Please select a client');
+                return;
+            }
+            
+            const client = clients.find(c => c.id === clientId);
             if (!client || client.sessionsRemaining <= 0) {
                 alert('Client has no remaining sessions');
                 return;
             }
 
-            // Get signature data
-            const signatureData = signatureCanvas.toDataURL();
-            if (isCanvasEmpty()) {
+            // Check if signature canvas exists and has content
+            if (!signatureCanvas || isCanvasEmpty()) {
                 alert('Please provide a client signature');
                 return;
             }
+
+            // Get signature data
+            const signatureData = signatureCanvas.toDataURL();
 
             const workout = {
                 id: Date.now().toString(),
@@ -514,10 +524,10 @@
 
         function populateClientDropdown(selectId) {
             const select = document.getElementById(selectId);
-            const activeClients = clients.filter(c => c.isActive);
+            const activeClients = clients.filter(c => c.isActive && c.sessionsRemaining > 0);
             
             select.innerHTML = '<option value="">Select Client</option>' +
-                activeClients.map(c => `<option value="${c.id}">${c.name}</option>`).join('');
+                activeClients.map(c => `<option value="${c.id}">${c.name} (${c.sessionsRemaining} sessions left)</option>`).join('');
         }
 
         function showModal(modalId) {
@@ -526,6 +536,15 @@
 
         function closeModal(modalId) {
             document.getElementById(modalId).classList.remove('show');
+            
+            // Reset workout form client dropdown visibility when closing workout modal
+            if (modalId === 'addWorkoutModal') {
+                const dropdown = document.getElementById('workoutClient');
+                const label = dropdown.previousElementSibling;
+                dropdown.style.display = 'block';
+                label.style.display = 'block';
+                clearSignature();
+            }
         }
 
         function saveData(key, data) {
@@ -625,8 +644,10 @@
             }
 
             // Hide client dropdown since we know the client
-            document.getElementById('workoutClient').style.display = 'none';
-            document.querySelector('label[for="workoutClient"]').style.display = 'none';
+            const dropdown = document.getElementById('workoutClient');
+            const label = dropdown.previousElementSibling;
+            dropdown.style.display = 'none';
+            label.style.display = 'none';
             
             showModal('addWorkoutModal');
         }
