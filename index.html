@@ -758,39 +758,66 @@
 
         function initSignatureCanvas() {
             signatureCanvas = document.getElementById('signatureCanvas');
-            if (!signatureCanvas) return;
+            if (!signatureCanvas) {
+                console.error('Signature canvas not found');
+                return;
+            }
             
             signatureContext = signatureCanvas.getContext('2d');
             
-            // Set canvas size
-            const rect = signatureCanvas.getBoundingClientRect();
-            signatureCanvas.width = rect.width * 2;
-            signatureCanvas.height = rect.height * 2;
-            signatureContext.scale(2, 2);
+            // Clear any existing event listeners
+            signatureCanvas.removeEventListener('touchstart', startDrawing);
+            signatureCanvas.removeEventListener('touchmove', draw);
+            signatureCanvas.removeEventListener('touchend', stopDrawing);
+            signatureCanvas.removeEventListener('mousedown', startDrawing);
+            signatureCanvas.removeEventListener('mousemove', draw);
+            signatureCanvas.removeEventListener('mouseup', stopDrawing);
+            signatureCanvas.removeEventListener('mouseout', stopDrawing);
             
-            // Setup drawing
+            // Set canvas size properly
+            const rect = signatureCanvas.getBoundingClientRect();
+            signatureCanvas.width = rect.width;
+            signatureCanvas.height = rect.height;
+            
+            // Setup drawing style
             signatureContext.strokeStyle = '#000';
             signatureContext.lineWidth = 2;
             signatureContext.lineCap = 'round';
-
-            // Touch events
-            signatureCanvas.addEventListener('touchstart', startDrawing);
-            signatureCanvas.addEventListener('touchmove', draw);
-            signatureCanvas.addEventListener('touchend', stopDrawing);
+            signatureContext.lineJoin = 'round';
             
-            // Mouse events
+            // Clear canvas
+            signatureContext.clearRect(0, 0, signatureCanvas.width, signatureCanvas.height);
+
+            // Touch events for mobile
+            signatureCanvas.addEventListener('touchstart', startDrawing, { passive: false });
+            signatureCanvas.addEventListener('touchmove', draw, { passive: false });
+            signatureCanvas.addEventListener('touchend', stopDrawing, { passive: false });
+            
+            // Mouse events for desktop
             signatureCanvas.addEventListener('mousedown', startDrawing);
             signatureCanvas.addEventListener('mousemove', draw);
             signatureCanvas.addEventListener('mouseup', stopDrawing);
             signatureCanvas.addEventListener('mouseout', stopDrawing);
+            
+            console.log('Signature canvas initialized');
         }
 
         function startDrawing(e) {
             e.preventDefault();
             isDrawing = true;
+            
             const rect = signatureCanvas.getBoundingClientRect();
-            const x = (e.touches ? e.touches[0].clientX : e.clientX) - rect.left;
-            const y = (e.touches ? e.touches[0].clientY : e.clientY) - rect.top;
+            let x, y;
+            
+            if (e.touches) {
+                // Touch event
+                x = e.touches[0].clientX - rect.left;
+                y = e.touches[0].clientY - rect.top;
+            } else {
+                // Mouse event
+                x = e.clientX - rect.left;
+                y = e.clientY - rect.top;
+            }
             
             signatureContext.beginPath();
             signatureContext.moveTo(x, y);
@@ -801,24 +828,39 @@
             e.preventDefault();
             
             const rect = signatureCanvas.getBoundingClientRect();
-            const x = (e.touches ? e.touches[0].clientX : e.clientX) - rect.left;
-            const y = (e.touches ? e.touches[0].clientY : e.clientY) - rect.top;
+            let x, y;
+            
+            if (e.touches) {
+                // Touch event
+                x = e.touches[0].clientX - rect.left;
+                y = e.touches[0].clientY - rect.top;
+            } else {
+                // Mouse event
+                x = e.clientX - rect.left;
+                y = e.clientY - rect.top;
+            }
             
             signatureContext.lineTo(x, y);
             signatureContext.stroke();
         }
 
-        function stopDrawing() {
-            isDrawing = false;
+        function stopDrawing(e) {
+            if (isDrawing) {
+                isDrawing = false;
+                signatureContext.beginPath(); // Start new path for next stroke
+            }
         }
 
         function clearSignature() {
-            if (signatureContext) {
+            if (signatureCanvas && signatureContext) {
                 signatureContext.clearRect(0, 0, signatureCanvas.width, signatureCanvas.height);
+                console.log('Signature cleared');
             }
         }
 
         function isCanvasEmpty() {
+            if (!signatureCanvas) return true;
+            
             const blank = document.createElement('canvas');
             blank.width = signatureCanvas.width;
             blank.height = signatureCanvas.height;
@@ -832,7 +874,9 @@
             if (modalId === 'addWorkoutModal') {
                 // Always populate the dropdown when showing workout modal
                 populateClientDropdown('workoutClient');
-                setTimeout(initSignatureCanvas, 100);
+                setTimeout(() => {
+                    initSignatureCanvas();
+                }, 200); // Increased timeout to ensure canvas is visible
             } else if (modalId === 'addAppointmentModal') {
                 populateClientDropdown('appointmentClient');
             }
