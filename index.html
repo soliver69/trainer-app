@@ -633,9 +633,16 @@
 
         function getTotalSpent(client) {
             const clientWorkouts = workouts.filter(w => w.clientId === client.id);
-            return clientWorkouts.reduce((total, workout) => {
-                return total + (workout.sessionCost || calculateLegacyWorkoutCost(workout, client));
+            console.log(`Client ${client.name} has ${clientWorkouts.length} workouts`);
+            
+            const totalSpent = clientWorkouts.reduce((total, workout) => {
+                const cost = workout.sessionCost || calculateLegacyWorkoutCost(workout, client);
+                console.log(`Workout ${workout.id}: ${cost.toFixed(2)}`);
+                return total + cost;
             }, 0);
+            
+            console.log(`Total spent for ${client.name}: ${totalSpent.toFixed(2)}`);
+            return totalSpent;
         }
 
         function calculateLegacyWorkoutCost(workout, client) {
