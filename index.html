@@ -625,6 +625,26 @@
             return date.toISOString().split('T')[0];
         }
 
+        // Helper functions for balance calculations
+        function getRemainingBalance(client) {
+            const totalSpent = getTotalSpent(client);
+            return client.deposit - totalSpent;
+        }
+
+        function getTotalSpent(client) {
+            const clientWorkouts = workouts.filter(w => w.clientId === client.id);
+            return clientWorkouts.reduce((total, workout) => {
+                return total + (workout.sessionCost || calculateLegacyWorkoutCost(workout, client));
+            }, 0);
+        }
+
+        function calculateLegacyWorkoutCost(workout, client) {
+            // For old workouts that don't have sessionCost, calculate based on duration
+            const hourlyRate = client.hourlyRate || client.pricePerSession;
+            const duration = workout.duration || 60; // Default to 60 minutes if not specified
+            return (duration / 60) * hourlyRate;
+        }
+
         function setupPWA() {
             // Service worker registration
             if ('serviceWorker' in navigator) {
