@@ -153,7 +153,7 @@
                         <input type="number" class="form-input" id="clientDeposit" step="0.01" required>
                     </div>
                     <div class="form-group">
-                        <label class="form-label">Price Per Session ($)</label>
+                        <label class="form-label">Price Per Hour ($)</label>
                         <input type="number" class="form-input" id="sessionPrice" step="0.01" required>
                     </div>
                     <button type="submit" class="btn" style="width: 100%;">Save Client</button>
@@ -351,7 +351,7 @@
         function addClient(e) {
             e.preventDefault();
             const deposit = parseFloat(document.getElementById('clientDeposit').value);
-            const price = parseFloat(document.getElementById('sessionPrice').value);
+            const hourlyRate = parseFloat(document.getElementById('sessionPrice').value);
             
             const client = {
                 id: Date.now().toString(),
@@ -359,9 +359,10 @@
                 phone: document.getElementById('clientPhone').value,
                 email: document.getElementById('clientEmail').value,
                 deposit: deposit,
-                pricePerSession: price,
-                totalSessions: Math.floor(deposit / price),
-                sessionsRemaining: Math.floor(deposit / price),
+                hourlyRate: hourlyRate,
+                pricePerSession: hourlyRate, // Keep for backward compatibility
+                totalSessions: Math.floor(deposit / hourlyRate), // Based on 1-hour sessions
+                sessionsRemaining: Math.floor(deposit / hourlyRate),
                 dateCreated: new Date().toISOString(),
                 isActive: true
             };
@@ -387,14 +388,26 @@
             }
             
             const client = clients.find(c => c.id === clientId);
-            if (!client || client.sessionsRemaining <= 0) {
-                alert('Client has no remaining sessions');
+            if (!client) {
+                alert('Client not found');
                 return;
             }
 
             // Check if signature canvas exists and has content
             if (!signatureCanvas || isCanvasEmpty()) {
                 alert('Please provide a client signature');
+                return;
+            }
+
+            // Calculate session cost based on duration and hourly rate
+            const duration = parseInt(document.getElementById('workoutDuration').value);
+            const hourlyRate = client.hourlyRate || client.pricePerSession; // Handle legacy data
+            const sessionCost = (duration / 60) * hourlyRate; // Convert minutes to hours
+            
+            // Check if client has enough remaining balance
+            const currentBalance = getRemainingBalance(client);
+            if (currentBalance < sessionCost) {
+                alert(`Insufficient balance. Session cost: ${sessionCost.toFixed(2)}, Available: ${currentBalance.toFixed(2)}`);
                 return;
             }
 
@@ -406,12 +419,12 @@
                 clientId: clientId,
                 date: new Date().toISOString(),
                 exercisesNotes: document.getElementById('workoutExercises').value,
-                duration: parseInt(document.getElementById('workoutDuration').value),
+                duration: duration,
+                sessionCost: sessionCost, // Store the actual cost charged
                 clientSignature: signatureData
             };
 
             workouts.push(workout);
-            client.sessionsRemaining--;
             
             saveData('workouts', workouts);
             saveData('clients', clients);
@@ -482,6 +495,7 @@
 
             container.innerHTML = recentWorkouts.map(workout => {
                 const client = clients.find(c => c.id === workout.clientId);
+                const cost = workout.sessionCost || (client ? calculateLegacyWorkoutCost(workout, client) : 0);
                 return `
                     <div class="workout-item">
                         <div style="display: flex; justify-content: space-between; margin-bottom: 8px;">
@@ -490,7 +504,7 @@
                         </div>
                         <div style="margin-bottom: 4px;">${workout.exercisesNotes || workout.exercises}</div>
                         <div style="color: #007AFF; font-size: 12px; margin-top: 8px;">
-                            ${workout.duration} min • Client Signed ✓
+                            ${workout.duration} min • ${cost.toFixed(2)} • Client Signed ✓
                         </div>
                     </div>
                 `;
@@ -578,14 +592,14 @@
                 return;
             }
             
-            const activeClients = clients.filter(c => c.isActive && c.sessionsRemaining > 0);
-            console.log('Active clients with sessions:', activeClients.length);
+            const activeClients = clients.filter(c => c.isActive && getRemainingBalance(c) > 0);
+            console.log('Active clients with balance:', activeClients.length);
             
             if (activeClients.length === 0) {
-                select.innerHTML = '<option value="">No clients with remaining sessions</option>';
+                select.innerHTML = '<option value="">No clients with remaining balance</option>';
             } else {
                 select.innerHTML = '<option value="">Select Client</option>' +
-                    activeClients.map(c => `<option value="${c.id}">${c.name} (${c.sessionsRemaining} sessions left)</option>`).join('');
+                    activeClients.map(c => `<option value="${c.id}">${c.name} (${getRemainingBalance(c).toFixed(2)} left)</option>`).join('');
             }
         }
 
