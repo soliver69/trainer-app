@@ -628,7 +628,9 @@
         // Helper functions for balance calculations
         function getRemainingBalance(client) {
             const totalSpent = getTotalSpent(client);
-            return client.deposit - totalSpent;
+            const remaining = client.deposit - totalSpent;
+            console.log(`Balance calculation for ${client.name}: Deposit ${client.deposit.toFixed(2)} - Spent ${totalSpent.toFixed(2)} = Remaining ${remaining.toFixed(2)}`);
+            return remaining;
         }
 
         function getTotalSpent(client) {
