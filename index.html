@@ -267,6 +267,9 @@
     </div>
 
     <script>
+        // Force clear any cached functions - VERSION 2.0
+        console.log('Loading Personal Trainer App v2.0 - No Workout Deletes');
+        
         // App Data
         let clients = JSON.parse(localStorage.getItem('clients') || '[]');
         let workouts = JSON.parse(localStorage.getItem('workouts') || '[]');
@@ -938,48 +941,6 @@
             message += `• Sessions remaining: ${client.sessionsRemaining}`;
             
             alert(message);
-        }
-
-        function confirmDeleteWorkout(workoutId) {
-            const workout = workouts.find(w => w.id === workoutId);
-            if (!workout) return;
-            
-            const client = clients.find(c => c.id === workout.clientId);
-            const clientName = client ? client.name : 'Unknown Client';
-            const workoutDate = new Date(workout.date).toLocaleDateString();
-            
-            const message = `Are you sure you want to delete this workout?\n\nClient: ${clientName}\nDate: ${workoutDate}\nDuration: ${workout.duration} minutes\n\nDeleting this workout will:\n• Remove the workout record\n• Add 1 session back to the client's account\n• Add ${client ? client.pricePerSession.toFixed(2) : '0.00'} back to their remaining balance\n\nThis action CANNOT be undone!`;
-            
-            if (confirm(message)) {
-                deleteWorkout(workoutId);
-            }
-        }
-
-        function deleteWorkout(workoutId) {
-            const workout = workouts.find(w => w.id === workoutId);
-            if (!workout) return;
-            
-            // Find the client and add session back
-            const client = clients.find(c => c.id === workout.clientId);
-            if (client) {
-                client.sessionsRemaining++;
-            }
-            
-            // Remove workout
-            workouts = workouts.filter(w => w.id !== workoutId);
-            
-            // Save updated data
-            saveData('workouts', workouts);
-            saveData('clients', clients);
-            
-            // Refresh displays
-            renderClients();
-            renderWorkouts();
-            if (currentClientId) {
-                renderClientDetail(currentClientId);
-            }
-            
-            alert('Workout deleted and session added back to client account.');
         }
     </script>
 </body>
