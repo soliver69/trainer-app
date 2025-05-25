@@ -480,31 +480,13 @@
             const appointmentDate = document.getElementById('appointmentDate').value;
             const appointmentTime = document.getElementById('appointmentTime').value;
             
-            console.log('Original date:', appointmentDate);
-            console.log('Original time:', appointmentTime);
-            
-            // Create the datetime more carefully to avoid timezone issues
-            const [year, month, day] = appointmentDate.split('-');
-            const [hours, minutes] = appointmentTime.split(':');
-            
-            // Create date in local timezone
-            const datetime = new Date(
-                parseInt(year), 
-                parseInt(month) - 1, // Month is 0-indexed
-                parseInt(day),
-                parseInt(hours),
-                parseInt(minutes),
-                0, // seconds
-                0  // milliseconds
-            );
-            
-            console.log('Created datetime:', datetime);
-            console.log('ISO string:', datetime.toISOString());
+            // Store as local date string to avoid timezone issues
+            const datetimeString = `${appointmentDate}T${appointmentTime}:00`;
             
             const appointment = {
                 id: Date.now().toString(),
                 clientId: document.getElementById('appointmentClient').value,
-                datetime: datetime.toISOString(),
+                datetime: datetimeString, // Store as string instead of ISO
                 duration: parseInt(document.getElementById('appointmentDuration').value),
                 isCompleted: false
             };
@@ -652,9 +634,9 @@
             
             // Get appointments for selected date
             const dayAppointments = appointments.filter(apt => {
-                const aptDate = new Date(apt.datetime);
-                return formatDate(aptDate) === dateStr;
-            }).sort((a, b) => new Date(a.datetime) - new Date(b.datetime));
+                const aptDateString = apt.datetime.split('T')[0]; // Get just the date part
+                return aptDateString === dateStr;
+            }).sort((a, b) => a.datetime.localeCompare(b.datetime));
             
             // Get workouts for selected date
             const dayWorkouts = workouts.filter(workout => {
