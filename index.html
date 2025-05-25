@@ -480,15 +480,31 @@
             const appointmentDate = document.getElementById('appointmentDate').value;
             const appointmentTime = document.getElementById('appointmentTime').value;
             
-            // Create datetime properly by parsing date and time separately
-            const dateOnly = new Date(appointmentDate + 'T00:00:00');
+            console.log('Original date:', appointmentDate);
+            console.log('Original time:', appointmentTime);
+            
+            // Create the datetime more carefully to avoid timezone issues
+            const [year, month, day] = appointmentDate.split('-');
             const [hours, minutes] = appointmentTime.split(':');
-            dateOnly.setHours(parseInt(hours), parseInt(minutes), 0, 0);
+            
+            // Create date in local timezone
+            const datetime = new Date(
+                parseInt(year), 
+                parseInt(month) - 1, // Month is 0-indexed
+                parseInt(day),
+                parseInt(hours),
+                parseInt(minutes),
+                0, // seconds
+                0  // milliseconds
+            );
+            
+            console.log('Created datetime:', datetime);
+            console.log('ISO string:', datetime.toISOString());
             
             const appointment = {
                 id: Date.now().toString(),
                 clientId: document.getElementById('appointmentClient').value,
-                datetime: dateOnly.toISOString(),
+                datetime: datetime.toISOString(),
                 duration: parseInt(document.getElementById('appointmentDuration').value),
                 isCompleted: false
             };
