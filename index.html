@@ -15,12 +15,9 @@
         .app { display: flex; flex-direction: column; min-height: 100vh; }
         .header { background: #007AFF; color: white; padding: 12px 16px; display: flex; justify-content: space-between; align-items: center; }
         .btn { background: #007AFF; color: white; border: none; padding: 8px 16px; border-radius: 8px; cursor: pointer; }
-        .btn.danger {
-            background: #FF3B30;
-        }
-        .btn.danger:hover {
-            background: #D70015;
-        }
+        .btn.secondary { background: #8E8E93; }
+        .btn.danger { background: #FF3B30; }
+        .btn.danger:hover { background: #D70015; }
         .content { flex: 1; padding: 16px; overflow-y: auto; }
         .tabs { display: flex; background: white; border-top: 1px solid #ccc; }
         .tab { flex: 1; padding: 12px; text-align: center; cursor: pointer; border: none; background: white; }
@@ -272,9 +269,6 @@
     </div>
 
     <script>
-        // Force clear any cached functions - VERSION 2.0
-        console.log('Loading Personal Trainer App v2.0 - No Workout Deletes');
-        
         // App Data
         let clients = JSON.parse(localStorage.getItem('clients') || '[]');
         let workouts = JSON.parse(localStorage.getItem('workouts') || '[]');
@@ -295,9 +289,6 @@
             renderWorkouts();
             setupSignatureCanvas();
             setupPWA();
-            
-            // Debug: Check if we have clients
-            console.log('Clients loaded:', clients.length);
         });
 
         function setupEventListeners() {
@@ -348,6 +339,30 @@
             }
         }
 
+        function formatDate(date) {
+            return date.toISOString().split('T')[0];
+        }
+
+        // Helper functions for balance calculations
+        function getRemainingBalance(client) {
+            const totalSpent = getTotalSpent(client);
+            return client.deposit - totalSpent;
+        }
+
+        function getTotalSpent(client) {
+            const clientWorkouts = workouts.filter(w => w.clientId === client.id);
+            return clientWorkouts.reduce((total, workout) => {
+                return total + (workout.sessionCost || calculateLegacyWorkoutCost(workout, client));
+            }, 0);
+        }
+
+        function calculateLegacyWorkoutCost(workout, client) {
+            // For old workouts that don't have sessionCost, calculate based on duration
+            const hourlyRate = client.hourlyRate || client.pricePerSession;
+            const duration = workout.duration || 60; // Default to 60 minutes if not specified
+            return (duration / 60) * hourlyRate;
+        }
+
         function addClient(e) {
             e.preventDefault();
             const deposit = parseFloat(document.getElementById('clientDeposit').value);
@@ -368,8 +383,8 @@
             };
 
             // Ensure clean data - no legacy balance issues
-            delete client.remainingMoney;  // Remove any old balance field
-            delete client.usedMoney;       // Remove any old used field
+            delete client.remainingMoney;
+            delete client.usedMoney;
 
             clients.push(client);
             saveData('clients', clients);
@@ -401,13 +416,13 @@
 
             // Calculate session cost based on duration and hourly rate
             const duration = parseInt(document.getElementById('workoutDuration').value);
-            const hourlyRate = client.hourlyRate || client.pricePerSession; // Handle legacy data
-            const sessionCost = (duration / 60) * hourlyRate; // Convert minutes to hours
+            const hourlyRate = client.hourlyRate || client.pricePerSession;
+            const sessionCost = (duration / 60) * hourlyRate;
             
             // Check if client has enough remaining balance
             const currentBalance = getRemainingBalance(client);
             if (currentBalance < sessionCost) {
-                alert(`Insufficient balance. Session cost: ${sessionCost.toFixed(2)}, Available: ${currentBalance.toFixed(2)}`);
+                alert(`Insufficient balance. Session cost: $${sessionCost.toFixed(2)}, Available: $${currentBalance.toFixed(2)}`);
                 return;
             }
 
@@ -420,7 +435,7 @@
                 date: new Date().toISOString(),
                 exercisesNotes: document.getElementById('workoutExercises').value,
                 duration: duration,
-                sessionCost: sessionCost, // Store the actual cost charged
+                sessionCost: sessionCost,
                 clientSignature: signatureData
             };
 
@@ -434,9 +449,13 @@
             if (currentClientId) {
                 renderClientDetail(currentClientId);
             }
+            
             closeModal('addWorkoutModal');
             document.getElementById('addWorkoutForm').reset();
             clearSignature();
+            
+            const newBalance = getRemainingBalance(client);
+            alert(`Workout recorded!\nDuration: ${duration} minutes\nCost: $${sessionCost.toFixed(2)}\nRemaining balance: $${newBalance.toFixed(2)}`);
         }
 
         function addAppointment(e) {
@@ -466,17 +485,17 @@
             }
 
             container.innerHTML = activeClients.map(client => {
-                const remainingMoney = client.sessionsRemaining * client.pricePerSession;
+                const remainingBalance = getRemainingBalance(client);
                 return `
                     <div class="client-item" onclick="showClientDetail('${client.id}')">
                         <div class="client-name">${client.name}</div>
                         <div class="client-phone">${client.phone}</div>
                         <div style="display: flex; gap: 8px; align-items: center;">
-                            <span class="badge ${client.sessionsRemaining > 0 ? 'success' : 'danger'}">
-                                ${client.sessionsRemaining} sessions
+                            <span class="badge ${remainingBalance > 0 ? 'success' : 'danger'}">
+                                $${remainingBalance.toFixed(2)} left
                             </span>
                             <span style="color: #8E8E93; font-size: 12px;">
-                                ${remainingMoney.toFixed(2)} left
+                                $${(client.hourlyRate || client.pricePerSession).toFixed(2)}/hr
                             </span>
                         </div>
                     </div>
@@ -504,7 +523,7 @@
                         </div>
                         <div style="margin-bottom: 4px;">${workout.exercisesNotes || workout.exercises}</div>
                         <div style="color: #007AFF; font-size: 12px; margin-top: 8px;">
-                            ${workout.duration} min • ${cost.toFixed(2)} • Client Signed ✓
+                            ${workout.duration} min • $${cost.toFixed(2)} • Client Signed ✓
                         </div>
                     </div>
                 `;
@@ -515,7 +534,6 @@
             const year = currentMonth.getFullYear();
             const month = currentMonth.getMonth();
             const firstDay = new Date(year, month, 1);
-            const lastDay = new Date(year, month + 1, 0);
             const startDate = new Date(firstDay);
             startDate.setDate(startDate.getDate() - firstDay.getDay());
 
@@ -585,7 +603,6 @@
         }
 
         function populateClientDropdown(selectId) {
-            console.log('Populating dropdown:', selectId, 'with clients:', clients.length);
             const select = document.getElementById(selectId);
             if (!select) {
                 console.error('Select element not found:', selectId);
@@ -593,24 +610,31 @@
             }
             
             const activeClients = clients.filter(c => c.isActive && getRemainingBalance(c) > 0);
-            console.log('Active clients with balance:', activeClients.length);
             
             if (activeClients.length === 0) {
                 select.innerHTML = '<option value="">No clients with remaining balance</option>';
             } else {
                 select.innerHTML = '<option value="">Select Client</option>' +
-                    activeClients.map(c => `<option value="${c.id}">${c.name} (${getRemainingBalance(c).toFixed(2)} left)</option>`).join('');
+                    activeClients.map(c => `<option value="${c.id}">${c.name} ($${getRemainingBalance(c).toFixed(2)} left)</option>`).join('');
             }
         }
 
         function showModal(modalId) {
             document.getElementById(modalId).classList.add('show');
+            
+            if (modalId === 'addWorkoutModal') {
+                populateClientDropdown('workoutClient');
+                setTimeout(() => {
+                    initSignatureCanvas();
+                }, 200);
+            } else if (modalId === 'addAppointmentModal') {
+                populateClientDropdown('appointmentClient');
+            }
         }
 
         function closeModal(modalId) {
             document.getElementById(modalId).classList.remove('show');
             
-            // Reset workout form client dropdown visibility when closing workout modal
             if (modalId === 'addWorkoutModal') {
                 document.getElementById('workoutClientGroup').style.display = 'block';
                 clearSignature();
@@ -621,51 +645,15 @@
             localStorage.setItem(key, JSON.stringify(data));
         }
 
-        function formatDate(date) {
-            return date.toISOString().split('T')[0];
-        }
-
-        // Helper functions for balance calculations
-        function getRemainingBalance(client) {
-            const totalSpent = getTotalSpent(client);
-            const remaining = client.deposit - totalSpent;
-            console.log(`Balance calculation for ${client.name}: Deposit ${client.deposit.toFixed(2)} - Spent ${totalSpent.toFixed(2)} = Remaining ${remaining.toFixed(2)}`);
-            return remaining;
-        }
-
-        function getTotalSpent(client) {
-            const clientWorkouts = workouts.filter(w => w.clientId === client.id);
-            console.log(`Client ${client.name} has ${clientWorkouts.length} workouts`);
-            
-            const totalSpent = clientWorkouts.reduce((total, workout) => {
-                const cost = workout.sessionCost || calculateLegacyWorkoutCost(workout, client);
-                console.log(`Workout ${workout.id}: ${cost.toFixed(2)}`);
-                return total + cost;
-            }, 0);
-            
-            console.log(`Total spent for ${client.name}: ${totalSpent.toFixed(2)}`);
-            return totalSpent;
-        }
-
-        function calculateLegacyWorkoutCost(workout, client) {
-            // For old workouts that don't have sessionCost, calculate based on duration
-            const hourlyRate = client.hourlyRate || client.pricePerSession;
-            const duration = workout.duration || 60; // Default to 60 minutes if not specified
-            return (duration / 60) * hourlyRate;
-        }
-
         function setupPWA() {
-            // Service worker registration
             if ('serviceWorker' in navigator) {
                 navigator.serviceWorker.register('data:text/javascript,console.log("SW registered")');
             }
 
-            // Install prompt
             let deferredPrompt;
             window.addEventListener('beforeinstallprompt', (e) => {
                 e.preventDefault();
                 deferredPrompt = e;
-                // Show install button/prompt
             });
         }
 
@@ -675,7 +663,6 @@
             const client = clients.find(c => c.id === clientId);
             if (!client) return;
 
-            // Hide all tabs and show client detail
             document.querySelectorAll('[id$="Tab"]').forEach(t => t.classList.add('hidden'));
             document.getElementById('clientDetailTab').classList.remove('hidden');
             
@@ -683,15 +670,14 @@
             renderClientDetail(clientId);
         }
 
-       function renderClientDetail(clientId) {
+        function renderClientDetail(clientId) {
             const client = clients.find(c => c.id === clientId);
             if (!client) return;
-        
-            // Calculate balance based on actual workout costs
+
             const remainingBalance = getRemainingBalance(client);
             const totalSpent = getTotalSpent(client);
             const hourlyRate = client.hourlyRate || client.pricePerSession;
-        
+
             document.getElementById('clientDetailName').textContent = client.name;
             document.getElementById('clientDetailInfo').innerHTML = `
                 <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin-bottom: 16px;">
@@ -700,21 +686,19 @@
                         <strong>Email:</strong><br>${client.email || 'Not provided'}
                     </div>
                     <div>
-                        <strong>Balance Remaining:</strong><br>$${remainingBalance.toFixed(2)}<br><br>
-                        <strong>Hourly Rate:</strong><br>$${hourlyRate.toFixed(2)}/hour
+                        <strong>Balance Remaining:</strong><br>${remainingBalance.toFixed(2)}<br><br>
+                        <strong>Hourly Rate:</strong><br>${hourlyRate.toFixed(2)}/hour
                     </div>
                 </div>
                 <div style="background: #f8f8f8; padding: 12px; border-radius: 8px;">
                     <strong>Payment Summary:</strong><br>
-                    Total Deposit: $${client.deposit.toFixed(2)}<br>
-                    Amount Used: $${totalSpent.toFixed(2)}<br>
-                    Balance Remaining: $${remainingBalance.toFixed(2)}<br>
-                    <small style="color: #8E8E93;">Charges based on duration: 30min=$${(hourlyRate * 0.5).toFixed(2)}, 45min=$${(hourlyRate * 0.75).toFixed(2)}, 60min=$${hourlyRate.toFixed(2)}, 90min=$${(hourlyRate * 1.5).toFixed(2)}</small>
+                    Total Deposit: ${client.deposit.toFixed(2)}<br>
+                    Amount Used: ${totalSpent.toFixed(2)}<br>
+                    Balance Remaining: ${remainingBalance.toFixed(2)}<br>
+                    <small style="color: #8E8E93;">Charges based on duration: 30min=${(hourlyRate * 0.5).toFixed(2)}, 45min=${(hourlyRate * 0.75).toFixed(2)}, 60min=${hourlyRate.toFixed(2)}, 90min=${(hourlyRate * 1.5).toFixed(2)}</small>
                 </div>
             `;
-       }
 
-            // Render client's workouts
             const clientWorkouts = workouts.filter(w => w.clientId === clientId)
                 .sort((a, b) => new Date(b.date) - new Date(a.date));
 
@@ -722,18 +706,21 @@
             if (clientWorkouts.length === 0) {
                 workoutsContainer.innerHTML = '<div class="empty">No workouts recorded yet.</div>';
             } else {
-                workoutsContainer.innerHTML = clientWorkouts.map(workout => `
-                    <div class="workout-item">
-                        <div style="display: flex; justify-content: space-between; margin-bottom: 8px;">
-                            <strong>${new Date(workout.date).toLocaleDateString()}</strong>
-                            <span style="color: #8E8E93;">${workout.duration} min</span>
+                workoutsContainer.innerHTML = clientWorkouts.map(workout => {
+                    const cost = workout.sessionCost || calculateLegacyWorkoutCost(workout, client);
+                    return `
+                        <div class="workout-item">
+                            <div style="display: flex; justify-content: space-between; margin-bottom: 8px;">
+                                <strong>${new Date(workout.date).toLocaleDateString()}</strong>
+                                <span style="color: #8E8E93;">${workout.duration} min • ${cost.toFixed(2)}</span>
+                            </div>
+                            <div style="margin-bottom: 8px;">${workout.exercisesNotes || workout.exercises}</div>
+                            <div style="color: #007AFF; font-size: 12px;">
+                                Client Signed ✓ <button onclick="viewSignature('${workout.id}')" style="background: none; border: none; color: #007AFF; text-decoration: underline; cursor: pointer;">View</button>
+                            </div>
                         </div>
-                        <div style="margin-bottom: 8px;">${workout.exercisesNotes || workout.exercises}</div>
-                        <div style="color: #007AFF; font-size: 12px;">
-                            Client Signed ✓ <button onclick="viewSignature('${workout.id}')" style="background: none; border: none; color: #007AFF; text-decoration: underline; cursor: pointer;">View</button>
-                        </div>
-                    </div>
-                `).join('');
+                    `;
+                }).join('');
             }
         }
 
@@ -741,14 +728,12 @@
             if (!currentClientId) return;
             
             const client = clients.find(c => c.id === currentClientId);
-            if (!client || client.sessionsRemaining <= 0) {
-                alert('This client has no remaining sessions.');
+            if (!client || getRemainingBalance(client) <= 0) {
+                alert('This client has insufficient balance.');
                 return;
             }
 
-            // Hide entire client selection group since we know the client
             document.getElementById('workoutClientGroup').style.display = 'none';
-            
             showModal('addWorkoutModal');
         }
 
@@ -807,32 +792,25 @@
             signatureCanvas.removeEventListener('mouseup', stopDrawing);
             signatureCanvas.removeEventListener('mouseout', stopDrawing);
             
-            // Set canvas size properly
             const rect = signatureCanvas.getBoundingClientRect();
             signatureCanvas.width = rect.width;
             signatureCanvas.height = rect.height;
             
-            // Setup drawing style
             signatureContext.strokeStyle = '#000';
             signatureContext.lineWidth = 2;
             signatureContext.lineCap = 'round';
             signatureContext.lineJoin = 'round';
             
-            // Clear canvas
             signatureContext.clearRect(0, 0, signatureCanvas.width, signatureCanvas.height);
 
-            // Touch events for mobile
             signatureCanvas.addEventListener('touchstart', startDrawing, { passive: false });
             signatureCanvas.addEventListener('touchmove', draw, { passive: false });
             signatureCanvas.addEventListener('touchend', stopDrawing, { passive: false });
             
-            // Mouse events for desktop
             signatureCanvas.addEventListener('mousedown', startDrawing);
             signatureCanvas.addEventListener('mousemove', draw);
             signatureCanvas.addEventListener('mouseup', stopDrawing);
             signatureCanvas.addEventListener('mouseout', stopDrawing);
-            
-            console.log('Signature canvas initialized');
         }
 
         function startDrawing(e) {
@@ -843,11 +821,9 @@
             let x, y;
             
             if (e.touches) {
-                // Touch event
                 x = e.touches[0].clientX - rect.left;
                 y = e.touches[0].clientY - rect.top;
             } else {
-                // Mouse event
                 x = e.clientX - rect.left;
                 y = e.clientY - rect.top;
             }
@@ -864,11 +840,9 @@
             let x, y;
             
             if (e.touches) {
-                // Touch event
                 x = e.touches[0].clientX - rect.left;
                 y = e.touches[0].clientY - rect.top;
             } else {
-                // Mouse event
                 x = e.clientX - rect.left;
                 y = e.clientY - rect.top;
             }
@@ -880,14 +854,13 @@
         function stopDrawing(e) {
             if (isDrawing) {
                 isDrawing = false;
-                signatureContext.beginPath(); // Start new path for next stroke
+                signatureContext.beginPath();
             }
         }
 
         function clearSignature() {
             if (signatureCanvas && signatureContext) {
                 signatureContext.clearRect(0, 0, signatureCanvas.width, signatureCanvas.height);
-                console.log('Signature cleared');
             }
         }
 
@@ -900,22 +873,7 @@
             return signatureCanvas.toDataURL() === blank.toDataURL();
         }
 
-        // Override showModal to initialize signature canvas and populate dropdowns
-        function showModal(modalId) {
-            document.getElementById(modalId).classList.add('show');
-            
-            if (modalId === 'addWorkoutModal') {
-                // Always populate the dropdown when showing workout modal
-                populateClientDropdown('workoutClient');
-                setTimeout(() => {
-                    initSignatureCanvas();
-                }, 200); // Increased timeout to ensure canvas is visible
-            } else if (modalId === 'addAppointmentModal') {
-                populateClientDropdown('appointmentClient');
-            }
-        }
-
-        // Delete Functions with Confirmation
+        // Delete Functions
         function confirmDeleteClient() {
             if (!currentClientId) return;
             
@@ -931,40 +889,21 @@
         }
 
         function deleteClient(clientId) {
-            // Remove client
             clients = clients.filter(c => c.id !== clientId);
-            
-            // Remove all workouts for this client
             workouts = workouts.filter(w => w.clientId !== clientId);
-            
-            // Remove all appointments for this client
             appointments = appointments.filter(a => a.clientId !== clientId);
             
-            // Save updated data
             saveData('clients', clients);
             saveData('workouts', workouts);
             saveData('appointments', appointments);
             
-            // Refresh displays
             renderClients();
             renderWorkouts();
             renderAppointments();
             
-            // Go back to main view
             showMainView();
             
             alert('Client and all associated data have been deleted.');
-        }
-
-        // Remove any old workout delete functions that might be cached
-        function confirmDeleteWorkout() {
-            // This function is disabled - workouts cannot be deleted
-            return false;
-        }
-
-        function deleteWorkout() {
-            // This function is disabled - workouts cannot be deleted  
-            return false;
         }
 
         // Add Money Functions
@@ -974,14 +913,13 @@
             const client = clients.find(c => c.id === currentClientId);
             if (!client) return;
             
-            const remainingMoney = client.sessionsRemaining * client.pricePerSession;
+            const remainingBalance = getRemainingBalance(client);
             
             document.getElementById('addMoneyClientName').value = client.name;
-            document.getElementById('currentBalance').value = `${remainingMoney.toFixed(2)}`;
+            document.getElementById('currentBalance').value = `${remainingBalance.toFixed(2)}`;
             document.getElementById('addMoneyAmount').value = '';
             document.getElementById('newBalance').value = '';
             
-            // Add event listener for real-time balance calculation
             const amountInput = document.getElementById('addMoneyAmount');
             amountInput.addEventListener('input', updateNewBalance);
             
@@ -992,9 +930,9 @@
             const client = clients.find(c => c.id === currentClientId);
             if (!client) return;
             
-            const currentRemaining = client.sessionsRemaining * client.pricePerSession;
+            const currentBalance = getRemainingBalance(client);
             const addAmount = parseFloat(document.getElementById('addMoneyAmount').value) || 0;
-            const newTotal = currentRemaining + addAmount;
+            const newTotal = currentBalance + addAmount;
             
             document.getElementById('newBalance').value = `${newTotal.toFixed(2)}`;
         }
@@ -1013,78 +951,25 @@
                 return;
             }
             
-            // Calculate how many additional sessions this money provides
-            const additionalSessions = Math.floor(addAmount / client.pricePerSession);
-            const remainderMoney = addAmount % client.pricePerSession;
-            
-            // Update client data
             client.deposit += addAmount;
-            client.totalSessions += additionalSessions;
-            client.sessionsRemaining += additionalSessions;
             
-            // Save data
             saveData('clients', clients);
             
-            // Update displays
             renderClients();
             renderClientDetail(currentClientId);
             
-            // Close modal and reset form
             closeModal('addMoneyModal');
             document.getElementById('addMoneyForm').reset();
             
-            // Show confirmation
+            const newBalance = getRemainingBalance(client);
+            const hourlyRate = client.hourlyRate || client.pricePerSession;
+            const hoursAvailable = newBalance / hourlyRate;
+            
             let message = `${addAmount.toFixed(2)} added to ${client.name}'s account!\n\n`;
-            message += `• ${additionalSessions} additional sessions added\n`;
-            if (remainderMoney > 0) {
-                message += `• ${remainderMoney.toFixed(2)} credit remaining (not enough for a full session)\n`;
-            }
-            message += `• New total sessions: ${client.totalSessions}\n`;
-            message += `• Sessions remaining: ${client.sessionsRemaining}`;
+            message += `• New balance: ${newBalance.toFixed(2)}\n`;
+            message += `• Equivalent to ${hoursAvailable.toFixed(1)} hours at ${hourlyRate.toFixed(2)}/hour`;
             
             alert(message);
-        }
-
-        function confirmDeleteWorkout(workoutId) {
-            const workout = workouts.find(w => w.id === workoutId);
-            if (!workout) return;
-            
-            const client = clients.find(c => c.id === workout.clientId);
-            const clientName = client ? client.name : 'Unknown Client';
-            const workoutDate = new Date(workout.date).toLocaleDateString();
-            
-            const message = `Are you sure you want to delete this workout?\n\nClient: ${clientName}\nDate: ${workoutDate}\nDuration: ${workout.duration} minutes\n\nDeleting this workout will:\n• Remove the workout record\n• Add 1 session back to the client's account\n• Add ${client ? client.pricePerSession.toFixed(2) : '0.00'} back to their remaining balance\n\nThis action CANNOT be undone!`;
-            
-            if (confirm(message)) {
-                deleteWorkout(workoutId);
-            }
-        }
-
-        function deleteWorkout(workoutId) {
-            const workout = workouts.find(w => w.id === workoutId);
-            if (!workout) return;
-            
-            // Find the client and add session back
-            const client = clients.find(c => c.id === workout.clientId);
-            if (client) {
-                client.sessionsRemaining++;
-            }
-            
-            // Remove workout
-            workouts = workouts.filter(w => w.id !== workoutId);
-            
-            // Save updated data
-            saveData('workouts', workouts);
-            saveData('clients', clients);
-            
-            // Refresh displays
-            renderClients();
-            renderWorkouts();
-            if (currentClientId) {
-                renderClientDetail(currentClientId);
-            }
-            
-            alert('Workout deleted and session added back to client account.');
         }
     </script>
 </body>
