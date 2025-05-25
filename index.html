@@ -480,13 +480,15 @@
             const appointmentDate = document.getElementById('appointmentDate').value;
             const appointmentTime = document.getElementById('appointmentTime').value;
             
-            // Combine date and time into a single datetime
-            const datetime = new Date(`${appointmentDate}T${appointmentTime}`);
+            // Create datetime properly by parsing date and time separately
+            const dateOnly = new Date(appointmentDate + 'T00:00:00');
+            const [hours, minutes] = appointmentTime.split(':');
+            dateOnly.setHours(parseInt(hours), parseInt(minutes), 0, 0);
             
             const appointment = {
                 id: Date.now().toString(),
                 clientId: document.getElementById('appointmentClient').value,
-                datetime: datetime.toISOString(),
+                datetime: dateOnly.toISOString(),
                 duration: parseInt(document.getElementById('appointmentDuration').value),
                 isCompleted: false
             };
