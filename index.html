@@ -224,7 +224,7 @@
                         <label class="form-label">Date & Time</label>
                         <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 8px;">
                             <input type="date" class="form-input" id="appointmentDate" required>
-                            <input type="time" class="form-input" id="appointmentTime" required>
+                            <input type="time" class="form-input" id="appointmentTime" value="09:00" required>
                         </div>
                     </div>
                     <div class="form-group">
@@ -345,7 +345,9 @@
             if (currentTab === 'clients') {
                 showModal('addClientModal');
             } else if (currentTab === 'schedule') {
+                // For schedule tab, show appointment modal
                 document.getElementById('appointmentDate').value = formatDate(selectedDate);
+                document.getElementById('appointmentTime').value = '09:00'; // Reset to default time
                 showModal('addAppointmentModal');
             } else if (currentTab === 'workouts') {
                 // Show client dropdown group
@@ -541,7 +543,10 @@
                     <div class="workout-item">
                         <div style="display: flex; justify-content: space-between; margin-bottom: 8px;">
                             <strong>${client ? client.name : 'Unknown Client'}</strong>
-                            <span style="color: #8E8E93;">${new Date(workout.date).toLocaleDateString()}</span>
+                            <span style="color: #8E8E93;">
+                                ${new Date(workout.date).toLocaleDateString()} • 
+                                ${new Date(workout.date).toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' })}
+                            </span>
                         </div>
                         <div style="margin-bottom: 4px;">${workout.exercisesNotes || workout.exercises}</div>
                         <div style="color: #007AFF; font-size: 12px; margin-top: 8px;">
@@ -611,7 +616,8 @@
                 html += `
                     <div class="calendar-day ${isSelected ? 'selected' : ''}" 
                          style="${!isCurrentMonth ? 'color: #C6C6C8;' : ''}"
-                         onclick="selectDate('${date.toISOString()}')">
+                         onclick="selectDate('${date.toISOString()}')"
+                         ondblclick="handleCalendarDoubleClick('${date.toISOString()}')">
                         ${date.getDate()}
                         <div class="calendar-dots">${dots}</div>
                     </div>
@@ -706,6 +712,24 @@
             renderCalendar();
         }
 
+        function handleCalendarDoubleClick(dateStr) {
+            selectedDate = new Date(dateStr);
+            renderCalendar();
+            
+            const selectedDateObj = new Date(dateStr);
+            const today = new Date();
+            today.setHours(0, 0, 0, 0);
+            selectedDateObj.setHours(0, 0, 0, 0);
+            
+            // If future date, open appointment scheduler
+            if (selectedDateObj >= today) {
+                document.getElementById('appointmentDate').value = formatDate(selectedDate);
+                document.getElementById('appointmentTime').value = '09:00';
+                showModal('addAppointmentModal');
+            }
+            // For past/current dates, just show the daily view (appointments are already rendered)
+        }
+
         function populateClientDropdown(selectId) {
             const select = document.getElementById(selectId);
             if (!select) {
@@ -733,6 +757,10 @@
                 }, 200);
             } else if (modalId === 'addAppointmentModal') {
                 populateClientDropdown('appointmentClient');
+                // Ensure default time is set
+                if (!document.getElementById('appointmentTime').value) {
+                    document.getElementById('appointmentTime').value = '09:00';
+                }
             }
         }
 
