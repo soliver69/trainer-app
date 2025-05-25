@@ -46,15 +46,20 @@
         .calendar { background: white; border-radius: 10px; padding: 16px; margin-bottom: 16px; }
         .calendar-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px; }
         .calendar-grid { display: grid; grid-template-columns: repeat(7, 1fr); gap: 1px; background: #f2f2f2; border-radius: 8px; overflow: hidden; }
-        .calendar-day { background: white; padding: 12px 8px; text-align: center; cursor: pointer; font-size: 14px; }
+        .calendar-day { background: white; padding: 12px 8px; text-align: center; cursor: pointer; font-size: 14px; position: relative; min-height: 45px; }
         .calendar-day.selected { background: #007AFF; color: white; }
+        .calendar-dots { position: absolute; bottom: 2px; left: 50%; transform: translateX(-50%); display: flex; gap: 2px; }
+        .calendar-dot { width: 6px; height: 6px; border-radius: 50%; }
         .appointment-item { background: white; border-radius: 8px; padding: 12px; margin-bottom: 8px; border-left: 4px solid #007AFF; }
     </style>
 </head>
 <body>
     <div class="app">
         <div class="header">
-            <h1 id="title">Personal Trainer</h1>
+            <div style="display: flex; align-items: center; gap: 12px;">
+                <img src="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='32' height='32' viewBox='0 0 100 100'%3E%3Ccircle cx='50' cy='50' r='45' fill='%23ffffff' stroke='%23007AFF' stroke-width='6'/%3E%3Ctext x='50' y='58' text-anchor='middle' font-family='Arial' font-size='24' font-weight='bold' fill='%23007AFF'%3EPT%3C/text%3E%3C/svg%3E" alt="Logo" style="width: 32px; height: 32px;">
+                <h1 id="title">Personal Trainer Pro</h1>
+            </div>
             <button class="btn" id="addBtn">+ Add</button>
         </div>
         
@@ -216,12 +221,11 @@
                         </select>
                     </div>
                     <div class="form-group">
-                        <label class="form-label">Date</label>
-                        <input type="date" class="form-input" id="appointmentDate" required>
-                    </div>
-                    <div class="form-group">
-                        <label class="form-label">Time</label>
-                        <input type="time" class="form-input" id="appointmentTime" required>
+                        <label class="form-label">Date & Time</label>
+                        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 8px;">
+                            <input type="date" class="form-input" id="appointmentDate" required>
+                            <input type="time" class="form-input" id="appointmentTime" required>
+                        </div>
                     </div>
                     <div class="form-group">
                         <label class="form-label">Duration</label>
@@ -280,6 +284,17 @@
         let signatureCanvas = null;
         let signatureContext = null;
         let isDrawing = false;
+
+        // Client colors for calendar dots
+        const clientColors = [
+            '#FF3B30', '#FF9500', '#FFCC00', '#34C759', '#00C7BE', 
+            '#007AFF', '#5856D6', '#AF52DE', '#FF2D92', '#A2845E'
+        ];
+
+        function getClientColor(clientId) {
+            const index = clients.findIndex(c => c.id === clientId);
+            return clientColors[index % clientColors.length];
+        }
 
         // Initialize App
         document.addEventListener('DOMContentLoaded', function() {
@@ -460,16 +475,23 @@
 
         function addAppointment(e) {
             e.preventDefault();
+            const appointmentDate = document.getElementById('appointmentDate').value;
+            const appointmentTime = document.getElementById('appointmentTime').value;
+            
+            // Combine date and time into a single datetime
+            const datetime = new Date(`${appointmentDate}T${appointmentTime}`);
+            
             const appointment = {
                 id: Date.now().toString(),
                 clientId: document.getElementById('appointmentClient').value,
-                date: document.getElementById('appointmentDate').value,
-                time: document.getElementById('appointmentTime').value,
-                duration: parseInt(document.getElementById('appointmentDuration').value)
+                datetime: datetime.toISOString(),
+                duration: parseInt(document.getElementById('appointmentDuration').value),
+                isCompleted: false
             };
 
             appointments.push(appointment);
             saveData('appointments', appointments);
+            renderCalendar();
             renderAppointments();
             closeModal('addAppointmentModal');
             document.getElementById('addAppointmentForm').reset();
@@ -543,7 +565,7 @@
             const grid = document.getElementById('calendarGrid');
             const days = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
             
-            let html = days.map(day => `<div class="calendar-day" style="background: #f2f2f2; font-weight: 600;">${day}</div>`).join('');
+            let html = days.map(day => `<div class="calendar-day" style="background: #f2f2f2; font-weight: 600; min-height: 30px;">${day}</div>`).join('');
 
             for (let i = 0; i < 42; i++) {
                 const date = new Date(startDate);
@@ -551,12 +573,47 @@
                 
                 const isCurrentMonth = date.getMonth() === month;
                 const isSelected = date.toDateString() === selectedDate.toDateString();
+                const dateStr = formatDate(date);
+                
+                // Get appointments and workouts for this date
+                const dayAppointments = appointments.filter(apt => {
+                    const aptDate = new Date(apt.datetime);
+                    return formatDate(aptDate) === dateStr;
+                });
+                
+                const dayWorkouts = workouts.filter(workout => {
+                    const workoutDate = new Date(workout.date);
+                    return formatDate(workoutDate) === dateStr;
+                });
+
+                // Create dots for appointments and workouts
+                let dots = '';
+                const clientsOnDay = new Set();
+                
+                // Add dots for appointments
+                dayAppointments.forEach(apt => {
+                    if (!clientsOnDay.has(apt.clientId)) {
+                        clientsOnDay.add(apt.clientId);
+                        const color = getClientColor(apt.clientId);
+                        dots += `<div class="calendar-dot" style="background-color: ${color}; opacity: 0.7;"></div>`;
+                    }
+                });
+                
+                // Add dots for completed workouts
+                dayWorkouts.forEach(workout => {
+                    if (!clientsOnDay.has(workout.clientId)) {
+                        clientsOnDay.add(workout.clientId);
+                        const color = getClientColor(workout.clientId);
+                        dots += `<div class="calendar-dot" style="background-color: ${color};"></div>`;
+                    }
+                });
                 
                 html += `
                     <div class="calendar-day ${isSelected ? 'selected' : ''}" 
                          style="${!isCurrentMonth ? 'color: #C6C6C8;' : ''}"
                          onclick="selectDate('${date.toISOString()}')">
                         ${date.getDate()}
+                        <div class="calendar-dots">${dots}</div>
                     </div>
                 `;
             }
@@ -568,28 +625,75 @@
         function renderAppointments() {
             const container = document.getElementById('appointmentsList');
             const dateStr = formatDate(selectedDate);
-            const dayAppointments = appointments.filter(apt => apt.date === dateStr);
+            
+            // Get appointments for selected date
+            const dayAppointments = appointments.filter(apt => {
+                const aptDate = new Date(apt.datetime);
+                return formatDate(aptDate) === dateStr;
+            }).sort((a, b) => new Date(a.datetime) - new Date(b.datetime));
+            
+            // Get workouts for selected date
+            const dayWorkouts = workouts.filter(workout => {
+                const workoutDate = new Date(workout.date);
+                return formatDate(workoutDate) === dateStr;
+            }).sort((a, b) => new Date(a.date) - new Date(b.date));
 
             document.getElementById('selectedDateHeader').textContent = 
                 selectedDate.toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric' });
 
-            if (dayAppointments.length === 0) {
-                container.innerHTML = '<div class="empty">No appointments scheduled</div>';
-                return;
-            }
-
-            container.innerHTML = dayAppointments.map(apt => {
-                const client = clients.find(c => c.id === apt.clientId);
-                return `
-                    <div class="appointment-item">
-                        <div style="display: flex; justify-content: space-between; margin-bottom: 4px;">
-                            <strong>${client ? client.name : 'Unknown Client'}</strong>
-                            <span>${apt.time}</span>
+            let html = '';
+            
+            // Show appointments (future/scheduled)
+            if (dayAppointments.length > 0) {
+                html += '<h4 style="margin: 16px 0 8px 0; color: #007AFF;">Scheduled Appointments</h4>';
+                dayAppointments.forEach(apt => {
+                    const client = clients.find(c => c.id === apt.clientId);
+                    const aptTime = new Date(apt.datetime);
+                    const color = getClientColor(apt.clientId);
+                    
+                    html += `
+                        <div class="appointment-item" onclick="startWorkoutFromAppointment('${apt.id}')" style="cursor: pointer; border-left-color: ${color};">
+                            <div style="display: flex; justify-content: space-between; margin-bottom: 4px;">
+                                <strong>${client ? client.name : 'Unknown Client'}</strong>
+                                <span>${aptTime.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' })}</span>
+                            </div>
+                            <div style="color: #8E8E93; font-size: 14px;">${apt.duration} minutes</div>
+                            <div style="color: #007AFF; font-size: 12px; margin-top: 4px;">Click to start workout →</div>
                         </div>
-                        <div style="color: #8E8E93; font-size: 14px;">${apt.duration} minutes</div>
-                    </div>
-                `;
-            }).join('');
+                    `;
+                });
+            }
+            
+            // Show completed workouts (history)
+            if (dayWorkouts.length > 0) {
+                html += '<h4 style="margin: 16px 0 8px 0; color: #34C759;">Completed Workouts</h4>';
+                dayWorkouts.forEach(workout => {
+                    const client = clients.find(c => c.id === workout.clientId);
+                    const workoutTime = new Date(workout.date);
+                    const cost = workout.sessionCost || calculateLegacyWorkoutCost(workout, client);
+                    const color = getClientColor(workout.clientId);
+                    
+                    html += `
+                        <div class="workout-item" style="border-left-color: ${color};">
+                            <div style="display: flex; justify-content: space-between; margin-bottom: 8px;">
+                                <strong>${client ? client.name : 'Unknown Client'}</strong>
+                                <span style="color: #8E8E93;">${workoutTime.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' })}</span>
+                            </div>
+                            <div style="margin-bottom: 4px;">${workout.exercisesNotes || workout.exercises}</div>
+                            <div style="color: #007AFF; font-size: 12px;">
+                                ${workout.duration} min • ${cost.toFixed(2)} • Client Signed ✓ 
+                                <button onclick="viewSignature('${workout.id}')" style="background: none; border: none; color: #007AFF; text-decoration: underline; cursor: pointer;">View</button>
+                            </div>
+                        </div>
+                    `;
+                });
+            }
+            
+            if (dayAppointments.length === 0 && dayWorkouts.length === 0) {
+                html = '<div class="empty">No appointments or workouts scheduled</div>';
+            }
+            
+            container.innerHTML = html;
         }
 
         function changeMonth(delta) {
@@ -970,6 +1074,22 @@
             message += `• Equivalent to ${hoursAvailable.toFixed(1)} hours at ${hourlyRate.toFixed(2)}/hour`;
             
             alert(message);
+        }
+
+        // Function to start workout from appointment
+        function startWorkoutFromAppointment(appointmentId) {
+            const appointment = appointments.find(a => a.id === appointmentId);
+            if (!appointment) return;
+            
+            const client = clients.find(c => c.id === appointment.clientId);
+            if (!client) return;
+            
+            // Set up the workout form with appointment details
+            currentClientId = appointment.clientId;
+            document.getElementById('workoutClientGroup').style.display = 'none';
+            document.getElementById('workoutDuration').value = appointment.duration.toString();
+            
+            showModal('addWorkoutModal');
         }
     </script>
 </body>
