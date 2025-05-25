@@ -456,32 +456,35 @@
             document.getElementById('addAppointmentForm').reset();
         }
 
-        function renderClients() {
-            const container = document.getElementById('clientsList');
-            const activeClients = clients.filter(c => c.isActive);
-
-            if (activeClients.length === 0) {
-                container.innerHTML = '<div class="empty">No clients yet. Add your first client!</div>';
-                return;
-            }
-
-            container.innerHTML = activeClients.map(client => {
-                const remainingMoney = client.sessionsRemaining * client.pricePerSession;
-                return `
-                    <div class="client-item" onclick="showClientDetail('${client.id}')">
-                        <div class="client-name">${client.name}</div>
-                        <div class="client-phone">${client.phone}</div>
-                        <div style="display: flex; gap: 8px; align-items: center;">
-                            <span class="badge ${client.sessionsRemaining > 0 ? 'success' : 'danger'}">
-                                ${client.sessionsRemaining} sessions
-                            </span>
-                            <span style="color: #8E8E93; font-size: 12px;">
-                                ${remainingMoney.toFixed(2)} left
-                            </span>
-                        </div>
+        function renderClientDetail(clientId) {
+            const client = clients.find(c => c.id === clientId);
+            if (!client) return;
+        
+            // Calculate balance based on actual workout costs
+            const remainingBalance = getRemainingBalance(client);
+            const totalSpent = getTotalSpent(client);
+            const hourlyRate = client.hourlyRate || client.pricePerSession;
+        
+            document.getElementById('clientDetailName').textContent = client.name;
+            document.getElementById('clientDetailInfo').innerHTML = `
+                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin-bottom: 16px;">
+                    <div>
+                        <strong>Phone:</strong><br>${client.phone}<br><br>
+                        <strong>Email:</strong><br>${client.email || 'Not provided'}
                     </div>
-                `;
-            }).join('');
+                    <div>
+                        <strong>Balance Remaining:</strong><br>$${remainingBalance.toFixed(2)}<br><br>
+                        <strong>Hourly Rate:</strong><br>$${hourlyRate.toFixed(2)}/hour
+                    </div>
+                </div>
+                <div style="background: #f8f8f8; padding: 12px; border-radius: 8px;">
+                    <strong>Payment Summary:</strong><br>
+                    Total Deposit: $${client.deposit.toFixed(2)}<br>
+                    Amount Used: $${totalSpent.toFixed(2)}<br>
+                    Balance Remaining: $${remainingBalance.toFixed(2)}<br>
+                    <small style="color: #8E8E93;">Charges based on duration: 30min=$${(hourlyRate * 0.5).toFixed(2)}, 45min=$${(hourlyRate * 0.75).toFixed(2)}, 60min=$${hourlyRate.toFixed(2)}, 90min=$${(hourlyRate * 1.5).toFixed(2)}</small>
+                </div>
+            `;
         }
 
         function renderWorkouts() {
