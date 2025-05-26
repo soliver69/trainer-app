@@ -1,4 +1,4 @@
-//version-34
+//version-36
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -293,8 +293,11 @@
         ];
 
         function getClientColor(clientId) {
+            if (!clientId || !clients || clients.length === 0) {
+                return clientColors[0]; // Default to first color
+            }
             const index = clients.findIndex(c => c.id === clientId);
-            return clientColors[index % clientColors.length];
+            return clientColors[Math.max(0, index) % clientColors.length];
         }
 
         // Initialize App
