@@ -1,4 +1,4 @@
-//version-36
+//version-38
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -643,7 +643,9 @@
                 `;
             }
             
+            console.log('Finished processing calendar days, about to update DOM');
             grid.innerHTML = html;
+            console.log('DOM updated, calling renderAppointments');
             renderAppointments();
         }
 
