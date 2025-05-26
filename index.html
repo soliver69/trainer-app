@@ -1,4 +1,4 @@
-//version-32
+//version-33
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -569,8 +569,11 @@
         }
 
         function renderCalendar() {
+            console.log('renderCalendar() called');
             const year = currentMonth.getFullYear();
             const month = currentMonth.getMonth();
+            console.log(`Rendering calendar for ${year}-${month + 1}`);
+            
             const firstDay = new Date(year, month, 1);
             const startDate = new Date(firstDay);
             startDate.setDate(startDate.getDate() - firstDay.getDay());
@@ -582,6 +585,8 @@
             const days = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
             
             let html = days.map(day => `<div class="calendar-day" style="background: #f2f2f2; font-weight: 600; min-height: 30px;">${day}</div>`).join('');
+
+            console.log('About to process 42 calendar days...');
 
             for (let i = 0; i < 42; i++) {
                 const date = new Date(startDate);
