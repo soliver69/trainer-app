@@ -607,12 +607,11 @@
                 
                 // Get appointments and workouts for this date
                 const dayAppointments = appointments.filter(apt => {
-                    const aptDate = new Date(apt.datetime);
-                    const aptDateStr = formatDate(aptDate);
+                    const aptDateStr = apt.datetime.split('T')[0];
                     
                     // Debug logging
                     if (dateStr === '2025-05-29' || dateStr === '2025-05-30') {
-                        console.log(`Checking appointment: ${apt.datetime} -> aptDate: ${aptDate} -> aptDateStr: ${aptDateStr} vs dateStr: ${dateStr}`);
+                        console.log(`Checking appointment: ${apt.datetime} -> aptDateStr: ${aptDateStr} vs dateStr: ${dateStr}`);
                         console.log(`Match result: ${aptDateStr === dateStr}`);
                     }
                     
