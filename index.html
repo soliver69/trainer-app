@@ -599,16 +599,35 @@
                 const isSelected = date.toDateString() === selectedDate.toDateString();
                 const dateStr = formatDate(date);
                 
+                // Debug logging for specific dates
+                if (dateStr === '2025-05-29' || dateStr === '2025-05-30') {
+                    console.log(`Processing calendar day: ${dateStr}`);
+                    console.log('All appointments:', appointments);
+                }
+                
                 // Get appointments and workouts for this date
                 const dayAppointments = appointments.filter(apt => {
                     const aptDate = new Date(apt.datetime);
-                    return formatDate(aptDate) === dateStr;
+                    const aptDateStr = formatDate(aptDate);
+                    
+                    // Debug logging
+                    if (dateStr === '2025-05-29' || dateStr === '2025-05-30') {
+                        console.log(`Checking appointment: ${apt.datetime} -> aptDate: ${aptDate} -> aptDateStr: ${aptDateStr} vs dateStr: ${dateStr}`);
+                        console.log(`Match result: ${aptDateStr === dateStr}`);
+                    }
+                    
+                    return aptDateStr === dateStr;
                 });
                 
                 const dayWorkouts = workouts.filter(workout => {
                     const workoutDate = new Date(workout.date);
                     return formatDate(workoutDate) === dateStr;
                 });
+    
+    // Debug logging for dots
+    if (dateStr === '2025-05-29' || dateStr === '2025-05-30') {
+        console.log(`Day ${dateStr}: Found ${dayAppointments.length} appointments, ${dayWorkouts.length} workouts`);
+    }
 
                 // Create dots for appointments and workouts
                 let dots = '';
@@ -620,6 +639,11 @@
                         clientsOnDay.add(apt.clientId);
                         const color = getClientColor(apt.clientId);
                         dots += `<div class="calendar-dot" style="background-color: ${color}; opacity: 0.7;"></div>`;
+                        
+                        // Debug logging
+                        if (dateStr === '2025-05-29' || dateStr === '2025-05-30') {
+                            console.log(`Adding appointment dot for ${dateStr}: color=${color}, clientId=${apt.clientId}`);
+                        }
                     }
                 });
                 
@@ -631,6 +655,11 @@
                         dots += `<div class="calendar-dot" style="background-color: ${color};"></div>`;
                     }
                 });
+
+// Debug final dots HTML
+if (dateStr === '2025-05-29' || dateStr === '2025-05-30') {
+    console.log(`Final dots HTML for ${dateStr}:`, dots);
+}
                 
                 html += `
                     <div class="calendar-day ${isSelected ? 'selected' : ''}" 
