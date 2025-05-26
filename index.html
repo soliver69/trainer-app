@@ -827,7 +827,7 @@ if (dateStr === '2025-05-29' || dateStr === '2025-05-30') {
             localStorage.setItem(key, JSON.stringify(data));
         }
 
-        //function setupPWA() {
+        function setupPWA() {
         //    if ('serviceWorker' in navigator) {
         //        navigator.serviceWorker.register('data:text/javascript,console.log("SW registered")');
         //    }
@@ -837,7 +837,7 @@ if (dateStr === '2025-05-29' || dateStr === '2025-05-30') {
                 e.preventDefault();
                 deferredPrompt = e;
             });
-        
+        }
 
         // Client Detail Functions
         function showClientDetail(clientId) {
