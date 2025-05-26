@@ -1,4 +1,4 @@
-//version-31
+//version-32
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -481,8 +481,12 @@
             const appointmentDate = document.getElementById('appointmentDate').value;
             const appointmentTime = document.getElementById('appointmentTime').value;
             
+            console.log('Adding appointment:', appointmentDate, appointmentTime);
+            
             // Store as local date string to avoid timezone issues
             const datetimeString = `${appointmentDate}T${appointmentTime}:00`;
+            
+            console.log('Storing datetime as:', datetimeString);
             
             const appointment = {
                 id: Date.now().toString(),
@@ -492,8 +496,14 @@
                 isCompleted: false
             };
 
+            console.log('Created appointment object:', appointment);
+            
             appointments.push(appointment);
             saveData('appointments', appointments);
+            
+            console.log('All appointments after adding:', appointments);
+            console.log('About to render calendar...');
+            
             renderCalendar();
             renderAppointments();
             closeModal('addAppointmentModal');
