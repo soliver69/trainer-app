@@ -469,7 +469,7 @@
             const workout = {
                 id: Date.now().toString(),
                 clientId: clientId,
-                date: new Date().toISOString().split('T')[0] + 'T' + new Date().toTimeString().split(' ')[0],
+                date: new Date().toLocaleDateString('en-CA') + 'T' + new Date().toLocaleTimeString('en-GB'),
                 exercisesNotes: document.getElementById('workoutExercises').value,
                 duration: duration,
                 sessionCost: sessionCost,
@@ -567,18 +567,19 @@
             container.innerHTML = recentWorkouts.map(workout => {
                 const client = clients.find(c => c.id === workout.clientId);
                 const cost = workout.sessionCost || (client ? calculateLegacyWorkoutCost(workout, client) : 0);
+                const color = getClientColor(workout.clientId); // Get client's color
                 return `
-                    <div class="workout-item">
+                    <div class="workout-item" style="border-left-color: ${color};">
                         <div style="display: flex; justify-content: space-between; margin-bottom: 8px;">
                             <strong>${client ? client.name : 'Unknown Client'}</strong>
                             <span style="color: #8E8E93;">
-                                ${new Date(workout.date).toLocaleDateString()} • 
+                                ${workout.date.split('T')[0]} • 
                                 ${new Date(workout.date).toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' })}
                             </span>
                         </div>
                         <div style="margin-bottom: 4px;">${workout.exercisesNotes || workout.exercises}</div>
                         <div style="color: #007AFF; font-size: 12px; margin-top: 8px;">
-                            ${workout.duration} min • $${cost.toFixed(2)} • Client Signed ✓
+                            ${workout.duration} min • ${cost.toFixed(2)} • Client Signed ✓
                         </div>
                     </div>
                 `;
@@ -616,10 +617,10 @@
                 });
                 
                 const dayWorkouts = workouts.filter(workout => {
-                    const workoutDate = new Date(workout.date);
-                    return formatDate(workoutDate) === dateStr;
+                    const workoutDateStr = workout.date.split('T')[0]; // Get just the date part
+                    return workoutDateStr === dateStr;
                 });
-
+                
                 // Create dots for appointments and workouts
                 let dots = '';
                 const clientsOnDay = new Set();
