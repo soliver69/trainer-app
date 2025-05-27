@@ -469,8 +469,8 @@
             const workout = {
                 id: Date.now().toString(),
                 clientId: clientId,
-                //date: new Date().toLocaleDateString('en-CA') + 'T' + new Date().toLocaleTimeString('en-GB'),
-                date: formatDate(new Date()) + 'T' + new Date().toTimeString().split(' ')[0],
+                date: new Date().toLocaleDateString('en-CA') + 'T' + new Date().toLocaleTimeString('en-GB'),
+                //date: formatDate(new Date()) + 'T' + new Date().toTimeString().split(' ')[0],
                 exercisesNotes: document.getElementById('workoutExercises').value,
                 duration: duration,
                 sessionCost: sessionCost,
@@ -618,8 +618,12 @@
                 });
                 
                 const dayWorkouts = workouts.filter(workout => {
-                    const workoutDateStr = workout.date.split('T')[0]; // Get just the date part
+                    const workoutDateStr = workout.date.split('T')[0];
                     return workoutDateStr === dateStr;
+                });
+                //const dayWorkouts = workouts.filter(workout => {
+                //    const workoutDateStr = workout.date.split('T')[0]; // Get just the date part
+                //    return workoutDateStr === dateStr;
                 });
                 
                 // Create dots for appointments and workouts
@@ -670,11 +674,16 @@
             }).sort((a, b) => a.datetime.localeCompare(b.datetime));
             
             // Get workouts for selected date
-            const dayWorkouts = workouts.filter(workout => {
-                const workoutDate = new Date(workout.date);
-                return formatDate(workoutDate) === dateStr;
-            }).sort((a, b) => new Date(a.date) - new Date(b.date));
+            //const dayWorkouts = workouts.filter(workout => {
+            //    const workoutDate = new Date(workout.date);
+            //    return formatDate(workoutDate) === dateStr;
+            //}).sort((a, b) => new Date(a.date) - new Date(b.date));
 
+            const dayWorkouts = workouts.filter(workout => {
+                const workoutDateStr = workout.date.split('T')[0];
+                return workoutDateStr === dateStr;
+            }).sort((a, b) => a.date.localeCompare(b.date));
+            
             document.getElementById('selectedDateHeader').textContent = 
                 selectedDate.toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric' });
 
