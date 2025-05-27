@@ -656,90 +656,90 @@
             grid.innerHTML = html;
             renderAppointments();
         }
-
-            function renderAppointments() {
-                const container = document.getElementById('appointmentsList');
-                const dateStr = formatDate(selectedDate);
-                
-                // Get appointments for selected date
-                const dayAppointments = appointments.filter(apt => {
-                    const aptDateString = apt.datetime.split('T')[0]; // Get just the date part
-                    return aptDateString === dateStr;
-                }).sort((a, b) => a.datetime.localeCompare(b.datetime));
-                
-                // Get workouts for selected date - FIXED: use direct string comparison
-                const dayWorkouts = workouts.filter(workout => {
-                    const workoutDateStr = workout.date.split('T')[0]; // Get just the date part
-                    return workoutDateStr === dateStr;
-                }).sort((a, b) => workout.date.localeCompare(b.date));
+        function renderAppointments() {
+            const container = document.getElementById('appointmentsList');
+            const dateStr = formatDate(selectedDate);
             
-                document.getElementById('selectedDateHeader').textContent = 
-                    selectedDate.toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric' });
+            // Get appointments for selected date
+            const dayAppointments = appointments.filter(apt => {
+                const aptDateString = apt.datetime.split('T')[0];
+                return aptDateString === dateStr;
+            }).sort((a, b) => a.datetime.localeCompare(b.datetime));
             
-                let html = '';
-                
-                // Show appointments (future/scheduled)
-                if (dayAppointments.length > 0) {
-                    html += '<h4 style="margin: 16px 0 8px 0; color: #007AFF;">Scheduled Appointments</h4>';
-                    dayAppointments.forEach(apt => {
-                        const client = clients.find(c => c.id === apt.clientId);
-                        const aptTime = new Date(apt.datetime);
-                        const color = getClientColor(apt.clientId);
-                        
-                        html += `
-                            <div class="appointment-item" onclick="startWorkoutFromAppointment('${apt.id}')" style="cursor: pointer; border-left-color: ${color};">
-                                <div style="display: flex; justify-content: space-between; margin-bottom: 4px;">
-                                    <strong>${client ? client.name : 'Unknown Client'}</strong>
-                                    <span>${aptTime.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' })}</span>
-                                </div>
-                                <div style="color: #8E8E93; font-size: 14px;">${apt.duration} minutes</div>
-                                <div style="color: #007AFF; font-size: 12px; margin-top: 4px;">Click to start workout →</div>
+            // Get workouts for selected date
+            const dayWorkouts = workouts.filter(workout => {
+                const workoutDateStr = workout.date.split('T')[0];
+                return workoutDateStr === dateStr;
+            }).sort((a, b) => workout.date.localeCompare(b.date));
+        
+            document.getElementById('selectedDateHeader').textContent = 
+                selectedDate.toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric' });
+        
+            let html = '';
+            
+            // Show appointments (future/scheduled)
+            if (dayAppointments.length > 0) {
+                html += '<h4 style="margin: 16px 0 8px 0; color: #007AFF;">Scheduled Appointments</h4>';
+                dayAppointments.forEach(apt => {
+                    const client = clients.find(c => c.id === apt.clientId);
+                    const aptTime = new Date(apt.datetime);
+                    const color = getClientColor(apt.clientId);
+                    
+                    html += `
+                        <div class="appointment-item" onclick="startWorkoutFromAppointment('${apt.id}')" style="cursor: pointer; border-left-color: ${color};">
+                            <div style="display: flex; justify-content: space-between; margin-bottom: 4px;">
+                                <strong>${client ? client.name : 'Unknown Client'}</strong>
+                                <span>${aptTime.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' })}</span>
                             </div>
-                        `;
-                    });
-                }
-                
-                // Show completed workouts (history) - FIXED: better time formatting
-                if (dayWorkouts.length > 0) {
-                    html += '<h4 style="margin: 16px 0 8px 0; color: #34C759;">Completed Workouts</h4>';
-                    dayWorkouts.forEach(workout => {
-                        const client = clients.find(c => c.id === workout.clientId);
-                        const cost = workout.sessionCost || calculateLegacyWorkoutCost(workout, client);
-                        const color = getClientColor(workout.clientId);
-                        
-                        // FIXED: Convert 24hr to 12hr format
-                        let timeStr = 'Completed';
-                        if (workout.date.includes('T') && workout.date.split('T')[1]) {
-                            const timePart = workout.date.split('T')[1];
-                            const [hours, minutes] = timePart.split(':');
-                            const hour12 = ((parseInt(hours) + 11) % 12 + 1);
-                            const ampm = parseInt(hours) >= 12 ? 'PM' : 'AM';
-                            timeStr = `${hour12}:${minutes} ${ampm}`;
+                            <div style="color: #8E8E93; font-size: 14px;">${apt.duration} minutes</div>
+                            <div style="color: #007AFF; font-size: 12px; margin-top: 4px;">Click to start workout →</div>
+                        </div>
+                    `;
+                });
+            }
+            
+            // Show completed workouts (history)
+            if (dayWorkouts.length > 0) {
+                html += '<h4 style="margin: 16px 0 8px 0; color: #34C759;">Completed Workouts</h4>';
+                dayWorkouts.forEach(workout => {
+                    const client = clients.find(c => c.id === workout.clientId);
+                    const cost = workout.sessionCost || calculateLegacyWorkoutCost(workout, client);
+                    const color = getClientColor(workout.clientId);
+                    
+                    // Simple time extraction and formatting
+                    let timeStr = 'Completed';
+                    if (workout.date.includes('T')) {
+                        const timePart = workout.date.split('T')[1];
+                        if (timePart) {
+                            const tempDate = new Date('2000-01-01T' + timePart);
+                            timeStr = tempDate.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' });
                         }
-                        
-                        html += `
-                            <div class="workout-item" style="border-left-color: ${color};">
-                                <div style="display: flex; justify-content: space-between; margin-bottom: 8px;">
-                                    <strong>${client ? client.name : 'Unknown Client'}</strong>
-                                    <span style="color: #8E8E93;">${timeStr}</span>
-                                </div>
-                                <div style="margin-bottom: 4px;">${workout.exercisesNotes || workout.exercises}</div>
-                                <div style="color: #007AFF; font-size: 12px;">
-                                    ${workout.duration} min • $${cost.toFixed(2)} • Client Signed ✓ 
-                                    <button onclick="viewSignature('${workout.id}')" style="background: none; border: none; color: #007AFF; text-decoration: underline; cursor: pointer;">View</button>
-                                </div>
+                    }
+                    
+                    html += `
+                        <div class="workout-item" style="border-left-color: ${color};">
+                            <div style="display: flex; justify-content: space-between; margin-bottom: 8px;">
+                                <strong>${client ? client.name : 'Unknown Client'}</strong>
+                                <span style="color: #8E8E93;">${timeStr}</span>
                             </div>
-                        `;
-                    });
-                }
-                
-                if (dayAppointments.length === 0 && dayWorkouts.length === 0) {
-                    html = '<div class="empty">No appointments or workouts scheduled</div>';
-                }
-                
-                container.innerHTML = html;
-            }           
+                            <div style="margin-bottom: 4px;">${workout.exercisesNotes || workout.exercises}</div>
+                            <div style="color: #007AFF; font-size: 12px;">
+                                ${workout.duration} min • $${cost.toFixed(2)} • Client Signed ✓ 
+                                <button onclick="viewSignature('${workout.id}')" style="background: none; border: none; color: #007AFF; text-decoration: underline; cursor: pointer;">View</button>
+                            </div>
+                        </div>
+                    `;
+                });
+            }
+            
+            if (dayAppointments.length === 0 && dayWorkouts.length === 0) {
+                html = '<div class="empty">No appointments or workouts scheduled</div>';
+            }
+            
+            container.innerHTML = html;
+        }
 
+        
         function changeMonth(delta) {
             currentMonth.setMonth(currentMonth.getMonth() + delta);
             renderCalendar();
