@@ -13,16 +13,16 @@
         * { margin: 0; padding: 0; box-sizing: border-box; }
         body { font-family: -apple-system, BlinkMacSystemFont, sans-serif; background: #f2f2f7; }
         .app { display: flex; flex-direction: column; min-height: 100vh; }
-        .header { background: #007AFF; color: white; padding: 12px 16px; display: flex; justify-content: space-between; align-items: center; }
-        .btn { background: #007AFF; color: white; border: none; padding: 8px 16px; border-radius: 8px; cursor: pointer; }
-        .btn.secondary { background: #8E8E93; }
-        .btn.danger { background: #FF3B30; }
-        .btn.danger:hover { background: #D70015; }
+        .header { background: #D32F2F; color: white; padding: 12px 16px; display: flex; justify-content: space-between; align-items: center; }
+        .btn { background: #D32F2F; color: white; border: none; padding: 8px 16px; border-radius: 8px; cursor: pointer; }
+        .btn.secondary { background: #2C2C2C; }
+        .btn.danger { background: #B71C1C; }
+        .btn.danger:hover { background: #8B0000; }
         .content { flex: 1; padding: 16px; overflow-y: auto; }
         .tabs { display: flex; background: white; border-top: 1px solid #ccc; }
         .tab { flex: 1; padding: 12px; text-align: center; cursor: pointer; border: none; background: white; }
-        .tab.active { color: #007AFF; }
-        .card { background: white; border-radius: 10px; margin-bottom: 16px; box-shadow: 0 1px 3px rgba(0,0,0,0.1); }
+        .tab.active { color: #D32F2F; }
+        .card { background: white; border-radius: 10px; margin-bottom: 16px; box-shadow: 0 1px 3px rgba(0,0,0,0.1); border-top: 3px solid #D32F2F; }
         .card-header { padding: 16px; border-bottom: 1px solid #f2f2f2; font-weight: 600; }
         .card-content { padding: 16px; }
         .client-item { padding: 12px 16px; border-bottom: 1px solid #f2f2f2; cursor: pointer; }
@@ -47,17 +47,17 @@
         .calendar-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px; }
         .calendar-grid { display: grid; grid-template-columns: repeat(7, 1fr); gap: 1px; background: #f2f2f2; border-radius: 8px; overflow: hidden; }
         .calendar-day { background: white; padding: 12px 8px; text-align: center; cursor: pointer; font-size: 14px; position: relative; min-height: 45px; }
-        .calendar-day.selected { background: #007AFF; color: white; }
+        .calendar-day.selected { background: #D32F2F; color: white; }
         .calendar-dots { position: absolute; bottom: 2px; left: 50%; transform: translateX(-50%); display: flex; gap: 2px; }
         .calendar-dot { width: 6px; height: 6px; border-radius: 50%; }
-        .appointment-item { background: white; border-radius: 8px; padding: 12px; margin-bottom: 8px; border-left: 4px solid #007AFF; }
+        .appointment-item { background: white; border-radius: 8px; padding: 12px; margin-bottom: 8px; border-left: 4px solid #D32F2F; }
     </style>
 </head>
 <body>
     <div class="app">
         <div class="header">
             <div style="display: flex; align-items: center; gap: 12px;">
-                <img src="carmen-fit-logo.png" alt="Carmen Fit Logo" style="width: 40px; height: 40px;">
+                <img src="carmen-fit-logo.png" alt="Carmen Fit Logo" style="width: 65px; height: 65px;">
                 <h1 id="title" style="color: white; font-weight: bold;">Carmen Fit Pro</h1>
             </div>
             <button class="btn" id="addBtn">+ Add</button>
@@ -286,10 +286,10 @@
         let signatureContext = null;
         let isDrawing = false;
 
-        // Client colors for calendar dots
+        // Client colors for calendar dots - Updated to match Carmen Fit brand
         const clientColors = [
-            '#FF3B30', '#FF9500', '#FFCC00', '#34C759', '#00C7BE', 
-            '#007AFF', '#5856D6', '#AF52DE', '#FF2D92', '#A2845E'
+            '#D32F2F', '#B71C1C', '#8B0000', '#2C2C2C', '#424242', 
+            '#616161', '#C62828', '#D84315', '#E65100', '#FF8F00'
         ];
 
         function getClientColor(clientId) {
@@ -366,7 +366,7 @@
             currentTab = tabName;
             
             const titles = { clients: 'Clients', schedule: 'Schedule', workouts: 'Workouts' };
-            document.getElementById('title').textContent = titles[tabName];
+            document.getElementById('title').textContent = 'Carmen Fit Pro - ' + titles[tabName];
         }
 
         function handleAddButton() {
@@ -469,8 +469,7 @@
             const workout = {
                 id: Date.now().toString(),
                 clientId: clientId,
-                date: new Date().toLocaleDateString('en-CA') + 'T' + new Date().toLocaleTimeString('en-GB'),
-                //date: formatDate(new Date()) + 'T' + new Date().toTimeString().split(' ')[0],
+                date: new Date().toISOString().split('T')[0] + 'T' + new Date().toTimeString().split(' ')[0],
                 exercisesNotes: document.getElementById('workoutExercises').value,
                 duration: duration,
                 sessionCost: sessionCost,
@@ -618,10 +617,10 @@
                 });
                 
                 const dayWorkouts = workouts.filter(workout => {
-                    const workoutDateStr = workout.date.split('T')[0];
-                    return workoutDateStr === dateStr;
+                    const workoutDate = new Date(workout.date);
+                    return formatDate(workoutDate) === dateStr;
                 });
-                
+
                 // Create dots for appointments and workouts
                 let dots = '';
                 const clientsOnDay = new Set();
@@ -670,16 +669,11 @@
             }).sort((a, b) => a.datetime.localeCompare(b.datetime));
             
             // Get workouts for selected date
-            //const dayWorkouts = workouts.filter(workout => {
-            //    const workoutDate = new Date(workout.date);
-            //    return formatDate(workoutDate) === dateStr;
-            //}).sort((a, b) => new Date(a.date) - new Date(b.date));
-
             const dayWorkouts = workouts.filter(workout => {
-                const workoutDateStr = workout.date.split('T')[0];
-                return workoutDateStr === dateStr;
-            }).sort((a, b) => a.date.localeCompare(b.date));
-            
+                const workoutDate = new Date(workout.date);
+                return formatDate(workoutDate) === dateStr;
+            }).sort((a, b) => new Date(a.date) - new Date(b.date));
+
             document.getElementById('selectedDateHeader').textContent = 
                 selectedDate.toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric' });
 
@@ -687,7 +681,7 @@
             
             // Show appointments (future/scheduled)
             if (dayAppointments.length > 0) {
-                html += '<h4 style="margin: 16px 0 8px 0; color: #007AFF;">Scheduled Appointments</h4>';
+                html += '<h4 style="margin: 16px 0 8px 0; color: #D32F2F;">Scheduled Appointments</h4>';
                 dayAppointments.forEach(apt => {
                     const client = clients.find(c => c.id === apt.clientId);
                     const aptTime = new Date(apt.datetime);
@@ -700,7 +694,7 @@
                                 <span>${aptTime.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' })}</span>
                             </div>
                             <div style="color: #8E8E93; font-size: 14px;">${apt.duration} minutes</div>
-                            <div style="color: #007AFF; font-size: 12px; margin-top: 4px;">Click to Record Workout →</div>
+                            <div style="color: #D32F2F; font-size: 12px; margin-top: 4px;">Click to Record Workout →</div>
                         </div>
                     `;
                 });
@@ -722,7 +716,7 @@
                                 <span style="color: #8E8E93;">${workoutTime.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' })}</span>
                             </div>
                             <div style="margin-bottom: 4px;">${workout.exercisesNotes || workout.exercises}</div>
-                            <div style="color: #007AFF; font-size: 12px;">
+                            <div style="color: #D32F2F; font-size: 12px;">
                                 ${workout.duration} min • ${cost.toFixed(2)} • Client Signed ✓ 
                                 <button onclick="viewSignature('${workout.id}')" style="background: none; border: none; color: #007AFF; text-decoration: underline; cursor: pointer;">View</button>
                             </div>
@@ -837,7 +831,7 @@
             document.querySelectorAll('[id$="Tab"]').forEach(t => t.classList.add('hidden'));
             document.getElementById('clientDetailTab').classList.remove('hidden');
             
-            document.getElementById('title').textContent = client.name;
+            document.getElementById('title').textContent = 'Carmen Fit Pro - ' + client.name;
             renderClientDetail(clientId);
         }
 
@@ -914,7 +908,7 @@
             document.getElementById(currentTab + 'Tab').classList.remove('hidden');
             
             const titles = { clients: 'Clients', schedule: 'Schedule', workouts: 'Workouts' };
-            document.getElementById('title').textContent = titles[currentTab];
+            document.getElementById('title').textContent = 'Carmen Fit Pro - ' + titles[currentTab];
         }
 
         function viewSignature(workoutId) {
