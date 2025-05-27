@@ -453,7 +453,7 @@
             const workout = {
                 id: Date.now().toString(),
                 clientId: clientId,
-                date: new Date().toISOString(),
+                date: new Date().toISOString().split('T')[0] + 'T' + new Date().toTimeString().split(' ')[0],
                 exercisesNotes: document.getElementById('workoutExercises').value,
                 duration: duration,
                 sessionCost: sessionCost,
