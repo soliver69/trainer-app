@@ -63,6 +63,13 @@
             <button class="btn" id="addBtn">+ Add</button>
         </div>
         
+        <!-- Move tabs to top and make them larger -->
+        <div class="tabs" style="border-bottom: 1px solid #ccc; border-top: none;">
+            <button class="tab active" data-tab="clients" style="padding: 16px; font-size: 16px;">👥 Clients</button>
+            <button class="tab" data-tab="schedule" style="padding: 16px; font-size: 16px;">📅 Schedule</button>
+            <button class="tab" data-tab="workouts" style="padding: 16px; font-size: 16px;">💪 Workouts</button>
+        </div>
+        
         <div class="content">
             <!-- Clients Tab -->
             <div id="clientsTab">
@@ -120,12 +127,6 @@
                     <div id="clientWorkoutsList"></div>
                 </div>
             </div>
-        </div>
-        
-        <div class="tabs">
-            <button class="tab active" data-tab="clients">👥 Clients</button>
-            <button class="tab" data-tab="schedule">📅 Schedule</button>
-            <button class="tab" data-tab="workouts">💪 Workouts</button>
         </div>
     </div>
     
@@ -468,8 +469,7 @@
             const workout = {
                 id: Date.now().toString(),
                 clientId: clientId,
-                //date: new Date().toISOString().split('T')[0] + 'T' + new Date().toTimeString().split(' ')[0],
-                date: new Date().toLocaleDateString('en-CA') + 'T' + new Date().toLocaleTimeString('en-GB'),
+                date: new Date().toISOString().split('T')[0] + 'T' + new Date().toTimeString().split(' ')[0],
                 exercisesNotes: document.getElementById('workoutExercises').value,
                 duration: duration,
                 sessionCost: sessionCost,
@@ -537,16 +537,17 @@
 
             container.innerHTML = activeClients.map(client => {
                 const remainingBalance = getRemainingBalance(client);
+                const clientColor = getClientColor(client.id);
                 return `
-                    <div class="client-item" onclick="showClientDetail('${client.id}')">
+                    <div class="client-item" onclick="showClientDetail('${client.id}')" style="border-left: 4px solid ${clientColor};">
                         <div class="client-name">${client.name}</div>
                         <div class="client-phone">${client.phone}</div>
                         <div style="display: flex; gap: 8px; align-items: center;">
                             <span class="badge ${remainingBalance > 0 ? 'success' : 'danger'}">
-                                $${remainingBalance.toFixed(2)} left
+                                ${remainingBalance.toFixed(2)} left
                             </span>
                             <span style="color: #8E8E93; font-size: 12px;">
-                                $${(client.hourlyRate || client.pricePerSession).toFixed(2)}/hr
+                                ${(client.hourlyRate || client.pricePerSession).toFixed(2)}/hr
                             </span>
                         </div>
                     </div>
@@ -557,22 +558,21 @@
         function renderWorkouts() {
             const container = document.getElementById('workoutsList');
             const recentWorkouts = workouts.sort((a, b) => new Date(b.date) - new Date(a.date)).slice(0, 10);
-        
+
             if (recentWorkouts.length === 0) {
                 container.innerHTML = '<div class="empty">No workouts recorded yet.</div>';
                 return;
             }
-        
+
             container.innerHTML = recentWorkouts.map(workout => {
                 const client = clients.find(c => c.id === workout.clientId);
                 const cost = workout.sessionCost || (client ? calculateLegacyWorkoutCost(workout, client) : 0);
-                const color = getClientColor(workout.clientId); // Get client's color
                 return `
-                    <div class="workout-item" style="border-left-color: ${color};">
+                    <div class="workout-item">
                         <div style="display: flex; justify-content: space-between; margin-bottom: 8px;">
                             <strong>${client ? client.name : 'Unknown Client'}</strong>
                             <span style="color: #8E8E93;">
-                                ${workout.date.split('T')[0]} • 
+                                ${new Date(workout.date).toLocaleDateString()} • 
                                 ${new Date(workout.date).toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' })}
                             </span>
                         </div>
@@ -616,8 +616,8 @@
                 });
                 
                 const dayWorkouts = workouts.filter(workout => {
-                    const workoutDateStr = workout.date.split('T')[0]; // Get just the date part
-                    return workoutDateStr === dateStr;
+                    const workoutDate = new Date(workout.date);
+                    return formatDate(workoutDate) === dateStr;
                 });
 
                 // Create dots for appointments and workouts
@@ -656,6 +656,7 @@
             grid.innerHTML = html;
             renderAppointments();
         }
+
         function renderAppointments() {
             const container = document.getElementById('appointmentsList');
             const dateStr = formatDate(selectedDate);
@@ -668,14 +669,13 @@
             
             // Get workouts for selected date
             const dayWorkouts = workouts.filter(workout => {
-                const workoutDateStr = workout.date.split('T')[0];
-                return workoutDateStr === dateStr;
-            //}).sort((a, b) => workout.date.localeCompare(b.date));
-            }).sort((a, b) => a.date.localeCompare(b.date));    
-        
+                const workoutDate = new Date(workout.date);
+                return formatDate(workoutDate) === dateStr;
+            }).sort((a, b) => new Date(a.date) - new Date(b.date));
+
             document.getElementById('selectedDateHeader').textContent = 
                 selectedDate.toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric' });
-        
+
             let html = '';
             
             // Show appointments (future/scheduled)
@@ -693,7 +693,7 @@
                                 <span>${aptTime.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' })}</span>
                             </div>
                             <div style="color: #8E8E93; font-size: 14px;">${apt.duration} minutes</div>
-                            <div style="color: #007AFF; font-size: 12px; margin-top: 4px;">Click to start workout →</div>
+                            <div style="color: #007AFF; font-size: 12px; margin-top: 4px;">Click to Record Workout →</div>
                         </div>
                     `;
                 });
@@ -704,28 +704,19 @@
                 html += '<h4 style="margin: 16px 0 8px 0; color: #34C759;">Completed Workouts</h4>';
                 dayWorkouts.forEach(workout => {
                     const client = clients.find(c => c.id === workout.clientId);
+                    const workoutTime = new Date(workout.date);
                     const cost = workout.sessionCost || calculateLegacyWorkoutCost(workout, client);
                     const color = getClientColor(workout.clientId);
-                    
-                    // Simple time extraction and formatting
-                    let timeStr = 'Completed';
-                    if (workout.date.includes('T')) {
-                        const timePart = workout.date.split('T')[1];
-                        if (timePart) {
-                            const tempDate = new Date('2000-01-01T' + timePart);
-                            timeStr = tempDate.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' });
-                        }
-                    }
                     
                     html += `
                         <div class="workout-item" style="border-left-color: ${color};">
                             <div style="display: flex; justify-content: space-between; margin-bottom: 8px;">
                                 <strong>${client ? client.name : 'Unknown Client'}</strong>
-                                <span style="color: #8E8E93;">${timeStr}</span>
+                                <span style="color: #8E8E93;">${workoutTime.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' })}</span>
                             </div>
                             <div style="margin-bottom: 4px;">${workout.exercisesNotes || workout.exercises}</div>
                             <div style="color: #007AFF; font-size: 12px;">
-                                ${workout.duration} min • $${cost.toFixed(2)} • Client Signed ✓ 
+                                ${workout.duration} min • ${cost.toFixed(2)} • Client Signed ✓ 
                                 <button onclick="viewSignature('${workout.id}')" style="background: none; border: none; color: #007AFF; text-decoration: underline; cursor: pointer;">View</button>
                             </div>
                         </div>
@@ -740,7 +731,6 @@
             container.innerHTML = html;
         }
 
-        
         function changeMonth(delta) {
             currentMonth.setMonth(currentMonth.getMonth() + delta);
             renderCalendar();
