@@ -738,40 +738,7 @@
                 }
                 
                 container.innerHTML = html;
-            }
-        
-            
-            // Show completed workouts (history)
-            if (dayWorkouts.length > 0) {
-                html += '<h4 style="margin: 16px 0 8px 0; color: #34C759;">Completed Workouts</h4>';
-                dayWorkouts.forEach(workout => {
-                    const client = clients.find(c => c.id === workout.clientId);
-                    const cost = workout.sessionCost || calculateLegacyWorkoutCost(workout, client);
-                    const color = getClientColor(workout.clientId);
-                    const timeStr = workout.date.split('T')[1] ? workout.date.split('T')[1].substring(0, 5) : 'Completed';
-                    
-                    html += `
-                        <div class="workout-item" style="border-left-color: ${color};">
-                            <div style="display: flex; justify-content: space-between; margin-bottom: 8px;">
-                                <strong>${client ? client.name : 'Unknown Client'}</strong>
-                                <span style="color: #8E8E93;">${timeStr}</span>
-                            </div>
-                            <div style="margin-bottom: 4px;">${workout.exercisesNotes || workout.exercises}</div>
-                            <div style="color: #007AFF; font-size: 12px;">
-                                ${workout.duration} min • $${cost.toFixed(2)} • Client Signed ✓ 
-                                <button onclick="viewSignature('${workout.id}')" style="background: none; border: none; color: #007AFF; text-decoration: underline; cursor: pointer;">View</button>
-                            </div>
-                        </div>
-                    `;
-                });
-            }
-            
-            if (dayAppointments.length === 0 && dayWorkouts.length === 0) {
-                html = '<div class="empty">No appointments or workouts scheduled</div>';
-            }
-            
-            container.innerHTML = html;
-        }
+            }           
 
         function changeMonth(delta) {
             currentMonth.setMonth(currentMonth.getMonth() + delta);
