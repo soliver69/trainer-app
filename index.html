@@ -469,7 +469,7 @@
                 id: Date.now().toString(),
                 clientId: clientId,
                 //date: new Date().toISOString().split('T')[0] + 'T' + new Date().toTimeString().split(' ')[0],
-                date: formatDate(new Date()) + 'T' + new Date().toTimeString().split(' ')[0],
+                date: new Date().toLocaleDateString('en-CA') + 'T' + new Date().toLocaleTimeString('en-GB'),
                 exercisesNotes: document.getElementById('workoutExercises').value,
                 duration: duration,
                 sessionCost: sessionCost,
@@ -557,21 +557,22 @@
         function renderWorkouts() {
             const container = document.getElementById('workoutsList');
             const recentWorkouts = workouts.sort((a, b) => new Date(b.date) - new Date(a.date)).slice(0, 10);
-
+        
             if (recentWorkouts.length === 0) {
                 container.innerHTML = '<div class="empty">No workouts recorded yet.</div>';
                 return;
             }
-
+        
             container.innerHTML = recentWorkouts.map(workout => {
                 const client = clients.find(c => c.id === workout.clientId);
                 const cost = workout.sessionCost || (client ? calculateLegacyWorkoutCost(workout, client) : 0);
+                const color = getClientColor(workout.clientId); // Get client's color
                 return `
-                    <div class="workout-item">
+                    <div class="workout-item" style="border-left-color: ${color};">
                         <div style="display: flex; justify-content: space-between; margin-bottom: 8px;">
                             <strong>${client ? client.name : 'Unknown Client'}</strong>
                             <span style="color: #8E8E93;">
-                                ${new Date(workout.date).toLocaleDateString()} • 
+                                ${workout.date.split('T')[0]} • 
                                 ${new Date(workout.date).toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' })}
                             </span>
                         </div>
