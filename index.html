@@ -670,7 +670,8 @@
             const dayWorkouts = workouts.filter(workout => {
                 const workoutDateStr = workout.date.split('T')[0];
                 return workoutDateStr === dateStr;
-            }).sort((a, b) => workout.date.localeCompare(b.date));
+            //}).sort((a, b) => workout.date.localeCompare(b.date));
+            }).sort((a, b) => a.date.localeCompare(b.date));    
         
             document.getElementById('selectedDateHeader').textContent = 
                 selectedDate.toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric' });
