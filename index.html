@@ -108,7 +108,7 @@
                             </div>
                             <div style="display: flex; flex-wrap: wrap; gap: 8px;">
                                 <button class="btn" onclick="showAddMoneyModal()" style="background: #34C759;">Add Money</button>
-                                <button class="btn" onclick="showAddWorkoutForClient()">Add Workout</button>
+                                <button class="btn" onclick="showForClient()">Add Workout</button>
                                 <button class="btn danger" onclick="confirmDeleteClient()">Delete Client</button>
                             </div>
                         </div>
@@ -166,14 +166,14 @@
     </div>
     
     <!-- Add Workout Modal -->
-    <div class="modal" id="addWorkoutModal">
+    <div class="modal" id="Modal">
         <div class="modal-content">
             <div class="modal-header">
                 <h3>Record Workout</h3>
-                <button class="btn secondary" onclick="closeModal('addWorkoutModal')">Cancel</button>
+                <button class="btn secondary" onclick="closeModal('Modal')">Cancel</button>
             </div>
             <div class="modal-body">
-                <form id="addWorkoutForm">
+                <form id="Form">
                     <div class="form-group" id="workoutClientGroup">
                         <label class="form-label">Client</label>
                         <select class="form-input" id="workoutClient">
@@ -428,13 +428,13 @@
                 alert('Client not found');
                 return;
             }
-
+        
             // Check if signature canvas exists and has content
             if (!signatureCanvas || isCanvasEmpty()) {
                 alert('Please provide a client signature');
                 return;
             }
-
+        
             // Calculate session cost based on duration and hourly rate
             const duration = parseInt(document.getElementById('workoutDuration').value);
             const hourlyRate = client.hourlyRate || client.pricePerSession;
@@ -446,10 +446,10 @@
                 alert(`Insufficient balance. Session cost: $${sessionCost.toFixed(2)}, Available: $${currentBalance.toFixed(2)}`);
                 return;
             }
-
+        
             // Get signature data
             const signatureData = signatureCanvas.toDataURL();
-
+        
             const workout = {
                 id: Date.now().toString(),
                 clientId: clientId,
@@ -459,14 +459,24 @@
                 sessionCost: sessionCost,
                 clientSignature: signatureData
             };
-
+        
             workouts.push(workout);
+            
+            // Check if this workout was started from an appointment and remove it
+            if (window.currentAppointmentId) {
+                console.log('Removing appointment:', window.currentAppointmentId);
+                appointments = appointments.filter(apt => apt.id !== window.currentAppointmentId);
+                console.log('Appointments after removal:', appointments.length);
+                saveData('appointments', appointments);
+                window.currentAppointmentId = null; // Clear the reference
+            }
             
             saveData('workouts', workouts);
             saveData('clients', clients);
             
             renderClients();
             renderWorkouts();
+            renderCalendar(); // Re-render calendar to update dots
             if (currentClientId) {
                 renderClientDetail(currentClientId);
             }
