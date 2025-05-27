@@ -1115,6 +1115,9 @@
             const client = clients.find(c => c.id === appointment.clientId);
             if (!client) return;
             
+            // Store the appointment ID so we can remove it after workout is saved
+            window.currentAppointmentId = appointmentId;
+            
             // Set up the workout form with appointment details
             currentClientId = appointment.clientId;
             document.getElementById('workoutClientGroup').style.display = 'none';
