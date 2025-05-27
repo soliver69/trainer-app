@@ -784,12 +784,13 @@
         function saveData(key, data) {
             localStorage.setItem(key, JSON.stringify(data));
         }
+        function setupPWA() {    
             let deferredPrompt;
             window.addEventListener('beforeinstallprompt', (e) => {
                 e.preventDefault();
                 deferredPrompt = e;
             });
-        
+        }
 
         // Client Detail Functions
         function showClientDetail(clientId) {
