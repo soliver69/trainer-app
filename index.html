@@ -484,12 +484,9 @@
             const appointmentDate = document.getElementById('appointmentDate').value;
             const appointmentTime = document.getElementById('appointmentTime').value;
             
-            console.log('Adding appointment:', appointmentDate, appointmentTime);
-            
             // Store as local date string to avoid timezone issues
             const datetimeString = `${appointmentDate}T${appointmentTime}:00`;
             
-            console.log('Storing datetime as:', datetimeString);
             
             const appointment = {
                 id: Date.now().toString(),
@@ -499,14 +496,9 @@
                 isCompleted: false
             };
 
-            console.log('Created appointment object:', appointment);
             
             appointments.push(appointment);
             saveData('appointments', appointments);
-            
-            console.log('All appointments after adding:', appointments);
-            console.log('About to render calendar...');
-            
             renderCalendar();
             renderAppointments();
             closeModal('addAppointmentModal');
@@ -572,11 +564,8 @@
         }
 
         function renderCalendar() {
-            console.log('renderCalendar() called');
             const year = currentMonth.getFullYear();
-            const month = currentMonth.getMonth();
-            console.log(`Rendering calendar for ${year}-${month + 1}`);
-            
+            const month = currentMonth.getMonth();            
             const firstDay = new Date(year, month, 1);
             const startDate = new Date(firstDay);
             startDate.setDate(startDate.getDate() - firstDay.getDay());
@@ -589,8 +578,6 @@
             
             let html = days.map(day => `<div class="calendar-day" style="background: #f2f2f2; font-weight: 600; min-height: 30px;">${day}</div>`).join('');
 
-            console.log('About to process 42 calendar days...');
-
             for (let i = 0; i < 42; i++) {
                 const date = new Date(startDate);
                 date.setDate(startDate.getDate() + i);
@@ -599,21 +586,9 @@
                 const isSelected = date.toDateString() === selectedDate.toDateString();
                 const dateStr = formatDate(date);
                 
-                // Debug logging for specific dates
-                if (dateStr === '2025-05-29' || dateStr === '2025-05-30') {
-                    console.log(`Processing calendar day: ${dateStr}`);
-                    console.log('All appointments:', appointments);
-                }
-                
                 // Get appointments and workouts for this date
                 const dayAppointments = appointments.filter(apt => {
                     const aptDateStr = apt.datetime.split('T')[0];
-                    
-                    // Debug logging
-                    if (dateStr === '2025-05-29' || dateStr === '2025-05-30') {
-                        console.log(`Checking appointment: ${apt.datetime} -> aptDateStr: ${aptDateStr} vs dateStr: ${dateStr}`);
-                        console.log(`Match result: ${aptDateStr === dateStr}`);
-                    }
                     
                     return aptDateStr === dateStr;
                 });
@@ -623,10 +598,6 @@
                     return formatDate(workoutDate) === dateStr;
                 });
     
-    // Debug logging for dots
-    if (dateStr === '2025-05-29' || dateStr === '2025-05-30') {
-        console.log(`Day ${dateStr}: Found ${dayAppointments.length} appointments, ${dayWorkouts.length} workouts`);
-    }
 
                 // Create dots for appointments and workouts
                 let dots = '';
@@ -638,11 +609,6 @@
                         clientsOnDay.add(apt.clientId);
                         const color = getClientColor(apt.clientId);
                         dots += `<div class="calendar-dot" style="background-color: ${color}; opacity: 0.7;"></div>`;
-                        
-                        // Debug logging
-                        if (dateStr === '2025-05-29' || dateStr === '2025-05-30') {
-                            console.log(`Adding appointment dot for ${dateStr}: color=${color}, clientId=${apt.clientId}`);
-                        }
                     }
                 });
                 
@@ -654,11 +620,6 @@
                         dots += `<div class="calendar-dot" style="background-color: ${color};"></div>`;
                     }
                 });
-
-// Debug final dots HTML
-if (dateStr === '2025-05-29' || dateStr === '2025-05-30') {
-    console.log(`Final dots HTML for ${dateStr}:`, dots);
-}
                 
                 html += `
                     <div class="calendar-day ${isSelected ? 'selected' : ''}" 
@@ -671,9 +632,7 @@ if (dateStr === '2025-05-29' || dateStr === '2025-05-30') {
                 `;
             }
             
-            console.log('Finished processing calendar days, about to update DOM');
             grid.innerHTML = html;
-            console.log('DOM updated, calling renderAppointments');
             renderAppointments();
         }
 
@@ -825,12 +784,6 @@ if (dateStr === '2025-05-29' || dateStr === '2025-05-30') {
         function saveData(key, data) {
             localStorage.setItem(key, JSON.stringify(data));
         }
-
-        function setupPWA() {
-        //    if ('serviceWorker' in navigator) {
-        //        navigator.serviceWorker.register('data:text/javascript,console.log("SW registered")');
-        //    }
-
             let deferredPrompt;
             window.addEventListener('beforeinstallprompt', (e) => {
                 e.preventDefault();
