@@ -315,48 +315,42 @@
             document.querySelectorAll('.tab').forEach(tab => {
                 tab.addEventListener('click', () => switchTab(tab.dataset.tab));
             });
-
+        
             // Add button
-            document.getElementById('addBtn').addEventListener('click', handleAddButton);
-
-            // Forms
-            document.getElementById('addClientForm').addEventListener('submit', addClient);
-            document.getElementById('addWorkoutForm').addEventListener('submit', addWorkout);
-            document.getElementById('addAppointmentForm').addEventListener('submit', addAppointment);
-            document.getElementById('addMoneyForm').addEventListener('submit', addMoney);
-
-            // Calendar navigation
-            document.getElementById('prevMonth').addEventListener('click', () => changeMonth(-1));
-            document.getElementById('nextMonth').addEventListener('click', () => changeMonth(1));
-        }
-
-        function switchTab(tabName) {
-            // Update active tab
-            document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
-            document.querySelector(`[data-tab="${tabName}"]`).classList.add('active');
-
-            // Show/hide content
-            document.querySelectorAll('[id$="Tab"]').forEach(t => t.classList.add('hidden'));
-            document.getElementById(tabName + 'Tab').classList.remove('hidden');
-
-            currentTab = tabName;
+            const addBtn = document.getElementById('addBtn');
+            if (addBtn) {
+                addBtn.addEventListener('click', handleAddButton);
+            }
+        
+            // Forms - check if elements exist before adding listeners
+            const addClientForm = document.getElementById('addClientForm');
+            if (addClientForm) {
+                addClientForm.addEventListener('submit', addClient);
+            }
             
-            const titles = { clients: 'Clients', schedule: 'Schedule', workouts: 'Workouts' };
-            document.getElementById('title').textContent = titles[tabName];
-        }
-
-        function handleAddButton() {
-            if (currentTab === 'clients') {
-                showModal('addClientModal');
-            } else if (currentTab === 'schedule') {
-                // For schedule tab, show appointment modal
-                document.getElementById('appointmentDate').value = formatDate(selectedDate);
-                document.getElementById('appointmentTime').value = '09:00'; // Reset to default time
-                showModal('addAppointmentModal');
-            } else if (currentTab === 'workouts') {
-                // Show client dropdown group
-                document.getElementById('workoutClientGroup').style.display = 'block';
-                showModal('addWorkoutModal');
+            const addWorkoutForm = document.getElementById('addWorkoutForm');
+            if (addWorkoutForm) {
+                addWorkoutForm.addEventListener('submit', addWorkout);
+            }
+            
+            const addAppointmentForm = document.getElementById('addAppointmentForm');
+            if (addAppointmentForm) {
+                addAppointmentForm.addEventListener('submit', addAppointment);
+            }
+            
+            const addMoneyForm = document.getElementById('addMoneyForm');
+            if (addMoneyForm) {
+                addMoneyForm.addEventListener('submit', addMoney);
+            }
+        
+            // Calendar navigation
+            const prevMonth = document.getElementById('prevMonth');
+            const nextMonth = document.getElementById('nextMonth');
+            if (prevMonth) {
+                prevMonth.addEventListener('click', () => changeMonth(-1));
+            }
+            if (nextMonth) {
+                nextMonth.addEventListener('click', () => changeMonth(1));
             }
         }
 
@@ -759,29 +753,39 @@
             
             if (activeClients.length === 0) {
                 select.innerHTML = '<option value="">No clients with remaining balance</option>';
-            } else {
+            } 
+            else {
                 select.innerHTML = '<option value="">Select Client</option>' +
                     activeClients.map(c => `<option value="${c.id}">${c.name} ($${getRemainingBalance(c).toFixed(2)} left)</option>`).join('');
             }
         }
 
-        function showModal(modalId) {
-            document.getElementById(modalId).classList.add('show');
+      function showModal(modalId) {
+            const modal = document.getElementById(modalId);
+            if (!modal) {
+                console.error('Modal not found:', modalId);
+                return;
+            }
+            
+            modal.classList.add('show');
             
             if (modalId === 'addWorkoutModal') {
                 populateClientDropdown('workoutClient');
                 setTimeout(() => {
                     initSignatureCanvas();
                 }, 200);
-            } else if (modalId === 'addAppointmentModal') {
+            } 
+            else if (modalId === 'addAppointmentModal') {
                 populateClientDropdown('appointmentClient');
                 // Ensure default time is set
-                if (!document.getElementById('appointmentTime').value) {
-                    document.getElementById('appointmentTime').value = '09:00';
+                const timeInput = document.getElementById('appointmentTime');
+                if (timeInput && !timeInput.value) {
+                    timeInput.value = '09:00';
                 }
             }
         }
 
+        
         function closeModal(modalId) {
             document.getElementById(modalId).classList.remove('show');
             
