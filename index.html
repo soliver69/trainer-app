@@ -1,4 +1,3 @@
-//version-40
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -108,7 +107,7 @@
                             </div>
                             <div style="display: flex; flex-wrap: wrap; gap: 8px;">
                                 <button class="btn" onclick="showAddMoneyModal()" style="background: #34C759;">Add Money</button>
-                                <button class="btn" onclick="showForClient()">Add Workout</button>
+                                <button class="btn" onclick="showAddWorkoutForClient()">Add Workout</button>
                                 <button class="btn danger" onclick="confirmDeleteClient()">Delete Client</button>
                             </div>
                         </div>
@@ -166,14 +165,14 @@
     </div>
     
     <!-- Add Workout Modal -->
-    <div class="modal" id="Modal">
+    <div class="modal" id="addWorkoutModal">
         <div class="modal-content">
             <div class="modal-header">
                 <h3>Record Workout</h3>
-                <button class="btn secondary" onclick="closeModal('Modal')">Cancel</button>
+                <button class="btn secondary" onclick="closeModal('addWorkoutModal')">Cancel</button>
             </div>
             <div class="modal-body">
-                <form id="Form">
+                <form id="addWorkoutForm">
                     <div class="form-group" id="workoutClientGroup">
                         <label class="form-label">Client</label>
                         <select class="form-input" id="workoutClient">
@@ -294,7 +293,7 @@
 
         function getClientColor(clientId) {
             if (!clientId || !clients || clients.length === 0) {
-                return clientColors[0]; // Default to first color
+                return clientColors[0];
             }
             const index = clients.findIndex(c => c.id === clientId);
             return clientColors[Math.max(0, index) % clientColors.length];
@@ -315,14 +314,14 @@
             document.querySelectorAll('.tab').forEach(tab => {
                 tab.addEventListener('click', () => switchTab(tab.dataset.tab));
             });
-        
+
             // Add button
             const addBtn = document.getElementById('addBtn');
             if (addBtn) {
                 addBtn.addEventListener('click', handleAddButton);
             }
-        
-            // Forms - check if elements exist before adding listeners
+
+            // Forms
             const addClientForm = document.getElementById('addClientForm');
             if (addClientForm) {
                 addClientForm.addEventListener('submit', addClient);
@@ -342,7 +341,7 @@
             if (addMoneyForm) {
                 addMoneyForm.addEventListener('submit', addMoney);
             }
-        
+
             // Calendar navigation
             const prevMonth = document.getElementById('prevMonth');
             const nextMonth = document.getElementById('nextMonth');
@@ -351,6 +350,34 @@
             }
             if (nextMonth) {
                 nextMonth.addEventListener('click', () => changeMonth(1));
+            }
+        }
+
+        function switchTab(tabName) {
+            // Update active tab
+            document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+            document.querySelector(`[data-tab="${tabName}"]`).classList.add('active');
+
+            // Show/hide content
+            document.querySelectorAll('[id$="Tab"]').forEach(t => t.classList.add('hidden'));
+            document.getElementById(tabName + 'Tab').classList.remove('hidden');
+
+            currentTab = tabName;
+            
+            const titles = { clients: 'Clients', schedule: 'Schedule', workouts: 'Workouts' };
+            document.getElementById('title').textContent = titles[tabName];
+        }
+
+        function handleAddButton() {
+            if (currentTab === 'clients') {
+                showModal('addClientModal');
+            } else if (currentTab === 'schedule') {
+                document.getElementById('appointmentDate').value = formatDate(selectedDate);
+                document.getElementById('appointmentTime').value = '09:00';
+                showModal('addAppointmentModal');
+            } else if (currentTab === 'workouts') {
+                document.getElementById('workoutClientGroup').style.display = 'block';
+                showModal('addWorkoutModal');
             }
         }
 
@@ -372,9 +399,8 @@
         }
 
         function calculateLegacyWorkoutCost(workout, client) {
-            // For old workouts that don't have sessionCost, calculate based on duration
             const hourlyRate = client.hourlyRate || client.pricePerSession;
-            const duration = workout.duration || 60; // Default to 60 minutes if not specified
+            const duration = workout.duration || 60;
             return (duration / 60) * hourlyRate;
         }
 
@@ -390,14 +416,13 @@
                 email: document.getElementById('clientEmail').value,
                 deposit: deposit,
                 hourlyRate: hourlyRate,
-                pricePerSession: hourlyRate, // Keep for backward compatibility
-                totalSessions: Math.floor(deposit / hourlyRate), // Based on 1-hour sessions
+                pricePerSession: hourlyRate,
+                totalSessions: Math.floor(deposit / hourlyRate),
                 sessionsRemaining: Math.floor(deposit / hourlyRate),
                 dateCreated: new Date().toISOString(),
                 isActive: true
             };
 
-            // Ensure clean data - no legacy balance issues
             delete client.remainingMoney;
             delete client.usedMoney;
 
@@ -422,28 +447,24 @@
                 alert('Client not found');
                 return;
             }
-        
-            // Check if signature canvas exists and has content
+
             if (!signatureCanvas || isCanvasEmpty()) {
                 alert('Please provide a client signature');
                 return;
             }
-        
-            // Calculate session cost based on duration and hourly rate
+
             const duration = parseInt(document.getElementById('workoutDuration').value);
             const hourlyRate = client.hourlyRate || client.pricePerSession;
             const sessionCost = (duration / 60) * hourlyRate;
             
-            // Check if client has enough remaining balance
             const currentBalance = getRemainingBalance(client);
             if (currentBalance < sessionCost) {
                 alert(`Insufficient balance. Session cost: $${sessionCost.toFixed(2)}, Available: $${currentBalance.toFixed(2)}`);
                 return;
             }
-        
-            // Get signature data
+
             const signatureData = signatureCanvas.toDataURL();
-        
+
             const workout = {
                 id: Date.now().toString(),
                 clientId: clientId,
@@ -453,16 +474,14 @@
                 sessionCost: sessionCost,
                 clientSignature: signatureData
             };
-        
+
             workouts.push(workout);
             
             // Check if this workout was started from an appointment and remove it
             if (window.currentAppointmentId) {
-                console.log('Removing appointment:', window.currentAppointmentId);
                 appointments = appointments.filter(apt => apt.id !== window.currentAppointmentId);
-                console.log('Appointments after removal:', appointments.length);
                 saveData('appointments', appointments);
-                window.currentAppointmentId = null; // Clear the reference
+                window.currentAppointmentId = null;
             }
             
             saveData('workouts', workouts);
@@ -470,7 +489,7 @@
             
             renderClients();
             renderWorkouts();
-            renderCalendar(); // Re-render calendar to update dots
+            renderCalendar();
             if (currentClientId) {
                 renderClientDetail(currentClientId);
             }
@@ -488,19 +507,16 @@
             const appointmentDate = document.getElementById('appointmentDate').value;
             const appointmentTime = document.getElementById('appointmentTime').value;
             
-            // Store as local date string to avoid timezone issues
             const datetimeString = `${appointmentDate}T${appointmentTime}:00`;
-            
             
             const appointment = {
                 id: Date.now().toString(),
                 clientId: document.getElementById('appointmentClient').value,
-                datetime: datetimeString, // Store as string instead of ISO
+                datetime: datetimeString,
                 duration: parseInt(document.getElementById('appointmentDuration').value),
                 isCompleted: false
             };
 
-            
             appointments.push(appointment);
             saveData('appointments', appointments);
             renderCalendar();
@@ -569,7 +585,8 @@
 
         function renderCalendar() {
             const year = currentMonth.getFullYear();
-            const month = currentMonth.getMonth();            
+            const month = currentMonth.getMonth();
+            
             const firstDay = new Date(year, month, 1);
             const startDate = new Date(firstDay);
             startDate.setDate(startDate.getDate() - firstDay.getDay());
@@ -593,7 +610,6 @@
                 // Get appointments and workouts for this date
                 const dayAppointments = appointments.filter(apt => {
                     const aptDateStr = apt.datetime.split('T')[0];
-                    
                     return aptDateStr === dateStr;
                 });
                 
@@ -601,7 +617,6 @@
                     const workoutDate = new Date(workout.date);
                     return formatDate(workoutDate) === dateStr;
                 });
-    
 
                 // Create dots for appointments and workouts
                 let dots = '';
@@ -646,7 +661,7 @@
             
             // Get appointments for selected date
             const dayAppointments = appointments.filter(apt => {
-                const aptDateString = apt.datetime.split('T')[0]; // Get just the date part
+                const aptDateString = apt.datetime.split('T')[0];
                 return aptDateString === dateStr;
             }).sort((a, b) => a.datetime.localeCompare(b.datetime));
             
@@ -733,19 +748,16 @@
             today.setHours(0, 0, 0, 0);
             selectedDateObj.setHours(0, 0, 0, 0);
             
-            // If future date, open appointment scheduler
             if (selectedDateObj >= today) {
                 document.getElementById('appointmentDate').value = formatDate(selectedDate);
                 document.getElementById('appointmentTime').value = '09:00';
                 showModal('addAppointmentModal');
             }
-            // For past/current dates, just show the daily view (appointments are already rendered)
         }
 
         function populateClientDropdown(selectId) {
             const select = document.getElementById(selectId);
             if (!select) {
-                console.error('Select element not found:', selectId);
                 return;
             }
             
@@ -753,17 +765,15 @@
             
             if (activeClients.length === 0) {
                 select.innerHTML = '<option value="">No clients with remaining balance</option>';
-            } 
-            else {
+            } else {
                 select.innerHTML = '<option value="">Select Client</option>' +
-                    activeClients.map(c => `<option value="${c.id}">${c.name} ($${getRemainingBalance(c).toFixed(2)} left)</option>`).join('');
+                    activeClients.map(c => `<option value="${c.id}">${c.name} (${getRemainingBalance(c).toFixed(2)} left)</option>`).join('');
             }
         }
 
-      function showModal(modalId) {
+        function showModal(modalId) {
             const modal = document.getElementById(modalId);
             if (!modal) {
-                console.error('Modal not found:', modalId);
                 return;
             }
             
@@ -774,10 +784,8 @@
                 setTimeout(() => {
                     initSignatureCanvas();
                 }, 200);
-            } 
-            else if (modalId === 'addAppointmentModal') {
+            } else if (modalId === 'addAppointmentModal') {
                 populateClientDropdown('appointmentClient');
-                // Ensure default time is set
                 const timeInput = document.getElementById('appointmentTime');
                 if (timeInput && !timeInput.value) {
                     timeInput.value = '09:00';
@@ -785,9 +793,13 @@
             }
         }
 
-        
         function closeModal(modalId) {
-            document.getElementById(modalId).classList.remove('show');
+            const modal = document.getElementById(modalId);
+            if (!modal) {
+                return;
+            }
+            
+            modal.classList.remove('show');
             
             if (modalId === 'addWorkoutModal') {
                 document.getElementById('workoutClientGroup').style.display = 'block';
@@ -798,6 +810,7 @@
         function saveData(key, data) {
             localStorage.setItem(key, JSON.stringify(data));
         }
+
         function setupPWA() {    
             let deferredPrompt;
             window.addEventListener('beforeinstallprompt', (e) => {
@@ -926,7 +939,6 @@
         function initSignatureCanvas() {
             signatureCanvas = document.getElementById('signatureCanvas');
             if (!signatureCanvas) {
-                console.error('Signature canvas not found');
                 return;
             }
             
@@ -1129,7 +1141,7 @@
             const client = clients.find(c => c.id === appointment.clientId);
             if (!client) return;
             
-            // Store the appointment ID so we can remove it after workout is saved
+            // Store the appointment ID globally so we can remove it after workout is saved
             window.currentAppointmentId = appointmentId;
             
             // Set up the workout form with appointment details
